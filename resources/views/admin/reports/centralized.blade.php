@@ -373,9 +373,10 @@
                                     <option value="dailySR">Daily Sales Reports</option>
                                     <option value="sales">Sales</option>
                                     <option value="expenses">Expenses</option>
+                                    <option value="menu">Menu</option> <!-- LINE 376: UPDATE BY KEN 10-23-2026 -->
                                     {{-- <option value="both">Sales & Expenses</option>
                                     <option value="inventory">Raw Materials</option>
-                                    <option value="menu">Menu</option>
+                                    
                                     <option value="invmenu">Raw Materials & Menu</option>
                                     <option value="waste">Waste</option> --}}
                                 </select>
@@ -1070,7 +1071,9 @@
                                                     echo '
                                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider text-center">#</th>
                                                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Menu</th>
-                                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Total Served</th>
+                                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Brand</th>
+                                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Amount</th>
+                                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Quantity</th>
                                                     ';
                                                 } else {
                                                     echo '
@@ -1517,7 +1520,7 @@
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">{{ $x++ }}</td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">{{ $row->display_number ?? $row->ref }}</td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">{{ $row->customer_name }}</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">₱ {{ number_format($row->row_amount ?? $row->amount ?? 0, 2, '.', ',') }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">₱ {{ number_format($row->row_amount, 2, '.', ',') }}</td>
                                             @foreach($dailySRPaymentColumns as $paymentColumn)
                                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
                                                     ₱ {{ number_format($row->payments[$paymentColumn] ?? 0, 2, '.', ',') }}
@@ -1742,6 +1745,9 @@
                                                         {{ $result->name ?? '' }}
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                                                        {{ $result->brand_name ?? 'N/A' }}
+                                                    </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
                                                         {{ $result->category->name ?? '' }}
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
@@ -1749,7 +1755,7 @@
                                                     </td>
                                                 @endif
 
-                                            {{-- MENU --}}
+                                            {{-- LINE 1758: start of update by ken 10-23-2026 MENU RANKING--}}
                                             @elseif($category == 'menu')
                                                 @if($report == 'rank')
                                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-center">
@@ -1759,7 +1765,13 @@
                                                         {{ $result->name ?? '' }}
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                                                        {{ isset($result->quantity) ? round($result->quantity, 0) : '' }}
+                                                        {{ $result->brand_name ?? '' }}
+                                                    </td>                                                    
+                                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                                                        ₱ {{ isset($result->total) ? number_format((float) $result->total, 2) : '0.00' }}
+                                                    </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                                                        {{ $result->quantity ?? '0' }}
                                                     </td>
                                                 @else
                                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
@@ -1772,7 +1784,7 @@
                                                         {{ isset($result->quantity) ? round($result->quantity, 0) : '' }}
                                                     </td>
                                                 @endif
-
+                                          {{-- LINE 1787: end of update by ken 10-23-2026 MENU RANKING --}}
                                             {{-- INVENTORY MENU SUMMARY --}}
                                             @elseif($category == 'invmenu' && $report == 'summary')
                                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">

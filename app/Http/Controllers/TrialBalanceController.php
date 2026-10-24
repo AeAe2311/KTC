@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class TrialBalanceController extends Controller
 {
@@ -143,6 +144,14 @@ class TrialBalanceController extends Controller
         return 'debit';
     }
 
+    protected function usesDebitMinusCredit(int $chartCategoryId): bool
+    {
+        $name = $this->getChartCategoryMap()[$chartCategoryId] ?? '';
+
+        return str_contains($name, 'revenue')
+            || str_contains($name, 'expense');
+    }
+
     protected function isContraAccount(string $accountName, int $chartCategoryId): bool
     {
         $key = strtolower(trim($accountName));
@@ -211,18 +220,27 @@ class TrialBalanceController extends Controller
             $pdDebit  = (float) $periodRows->sum('debit');
             $pdCredit = (float) $periodRows->sum('credit');
 
-            $beginningBalance = $bfCredit - $bfDebit;
-            $periodNet        = $pdCredit - $pdDebit;
-            $balance          = $beginningBalance + $periodNet;
-
             $chartCategoryId = (int) ($account->cc_id ?? 0);
             $normalBalance   = $this->getNormalBalance($chartCategoryId);
+            $debitMinusCredit = $this->usesDebitMinusCredit($chartCategoryId);
+
+            if ($debitMinusCredit) {
+                $beginningBalance = $bfCredit - $bfDebit;
+                $balance = $pdDebit - $pdCredit;
+            } else {
+                $beginningBalance = $bfCredit - $bfDebit;
+                $periodNet        = $pdCredit - $pdDebit;
+                $balance          = $beginningBalance + $periodNet;
+            }
 
             if ($this->isContraAccount($accountName, $chartCategoryId)) {
                 $normalBalance = $normalBalance === 'debit' ? 'credit' : 'debit';
             }
 
-            if ($normalBalance === 'debit') {
+            if ($debitMinusCredit) {
+                $balanceDebit  = $balance >= 0 ? $balance : 0;
+                $balanceCredit = $balance < 0  ? abs($balance) : 0;
+            } elseif ($normalBalance === 'debit') {
                 $balanceDebit  = $balance >= 0 ? $balance : 0;
                 $balanceCredit = $balance < 0  ? abs($balance) : 0;
             } else {
@@ -257,7 +275,9 @@ class TrialBalanceController extends Controller
 
         if ($excludeZeroBalances) {
             $trialBalances = array_filter($trialBalances, function ($item) {
-                return $item->balance_debit != 0 || $item->balance_credit != 0;
+                return $item->balance_debit != 0
+                    || $item->balance_credit != 0
+                    || $this->isCostOfGoodsAccount((string) ($item->account_name ?? ''));
             });
         }
 
@@ -527,6 +547,10 @@ class TrialBalanceController extends Controller
 
         $bfDebit  = (float) $beginningRows->sum('debit');
         $bfCredit = (float) $beginningRows->sum('credit');
+        $accountCategoryId = (int) DB::table('expenses_categories')
+            ->where('id', $accountId)
+            ->value('cc_id');
+        $debitMinusCredit = $this->usesDebitMinusCredit($accountCategoryId);
         $beginningBalance = $bfCredit - $bfDebit;
 
         return response()->json([
@@ -543,6 +567,7 @@ class TrialBalanceController extends Controller
                 'total_credit' => (float) $periodRows->sum('credit'),
             ],
             'beginning_balance' => $beginningBalance,
+            'balance_mode' => $debitMinusCredit ? 'debit_minus_credit' : 'credit_minus_debit',
         ]);
     }
 
@@ -719,18 +744,123 @@ class TrialBalanceController extends Controller
                 return $r;
             });
         }
-        /* 0.5) COST OF GOODS SOLD — payment_class = 1, DEBIT */
+
+        /* 0.5) COST OF GOODS SOLD — mirrors IncomeStatementController
+         *
+         *   COGS = Beginning Inventory                       (income_statement id=2)
+         *        + inventory_transactions (exp_type = 0)    (COGS movements)
+         *        + ordered_cogs purchases  (per po_id)       (VOIDs negative)
+         *        - Scrap                                    (income_statement id=2)
+         *        - Ending Inventory                         (income_statement id=2)
+         *
+         * COGS is an expense (debit-normal); reductions appear as credits so that
+         * `balance = periodDebit - periodCredit` matches `$cogsValueByMonth` in IS.
+         *
+         * Each P.O. row carries its `lines[]` (menu – brand, amount, void flag)
+         * so the breakdown modal can expand it just like the IncomeStatement modal.
+         */
         if ($isCogs) {
+
+            /* 1) Purchases — ordered_cogs, grouped per P.O. */
+            if (Schema::hasTable('ordered_cogs')) {
+                $purchaseQuery = DB::table('ordered_cogs as oc')
+                    ->leftJoin('menus',  'menus.id',  '=', 'oc.menu_id')
+                    ->leftJoin('brands', 'brands.id', '=', 'menus.brand_id')
+                    ->leftJoin('purchase_ordered as po', 'po.id', '=', 'oc.po_id')
+                    ->leftJoin('suppliers as s', 's.id', '=', 'po.supplier_id')
+                    ->select(
+                        'oc.id', 'oc.po_id', 'oc.si_number', 'oc.po_total',
+                        'oc.status', 'oc.created_at',
+                        'menus.name  as menu_name',
+                        'brands.name as brand_name',
+                        DB::raw('COALESCE(NULLIF(TRIM(po.supplier_name), ""), s.name) as supplier_name')
+                    );
+
+                $this->applyRange($purchaseQuery, 'oc.created_at', $rangeStart, $rangeEnd);
+
+                $usedLabels = [];
+                $orders = [];
+                foreach ($purchaseQuery
+                            ->orderBy('oc.created_at')
+                            ->orderBy('oc.po_id')
+                            ->orderBy('oc.id')
+                            ->get() as $line) {
+
+                    $orderId = $line->po_id;
+
+                    if (!isset($orders[$orderId])) {
+                        $orders[$orderId] = [
+                            'created_at' => $line->created_at,
+                            'po_number'  => trim((string) $line->si_number),
+                            'supplier_name' => trim((string) ($line->supplier_name ?? '')),
+                            'amount'     => 0,
+                            'lines'      => [],
+                        ];
+                    }
+
+                    $isVoid = strtoupper((string) $line->status) === 'VOID';
+                    $amount = round((float) $line->po_total, 2);
+                    if ($isVoid) {
+                        $amount = -abs($amount);
+                    }
+
+                    $menu  = preg_replace('/\s+/', ' ', trim((string) $line->menu_name));
+                    $brand = trim((string) $line->brand_name);
+
+                    $label = $brand !== '' ? $menu . ' – ' . $brand : $menu;
+                    if ($label === '') $label = 'Unnamed Item';
+                    if ($isVoid)     $label .= ' (VOID)';
+
+                    $orders[$orderId]['lines'][] = [
+                        'item'   => $label,
+                        'amount' => $amount,
+                        'void'   => $isVoid,
+                    ];
+                    $orders[$orderId]['amount'] += $amount;
+                }
+
+                foreach ($orders as $order) {
+                    // Match the income-statement rule: retain a P.O. when it
+                    // has item activity, even if SALE and VOID lines net to zero.
+                    if (
+                        round($order['amount'], 2) == 0
+                        && empty(array_filter($order['lines'], fn ($line) => (float) ($line['amount'] ?? 0) != 0))
+                    ) {
+                        continue;
+                    }
+
+                    $poLabel = $order['po_number'] !== '' ? $order['po_number'] : '—';
+                    $supplierName = $order['supplier_name'] !== '' ? $order['supplier_name'] : '—';
+                    $displayLabel = $supplierName . ' — S.I. # ' . $poLabel;
+                    $usedLabels[$displayLabel] = ($usedLabels[$displayLabel] ?? 0) + 1;
+                    if ($usedLabels[$displayLabel] > 1) {
+                        $displayLabel .= ' (' . $usedLabels[$displayLabel] . ')';
+                    }
+
+                    $rows->push([
+                        'id'           => 'PO-' . md5($poLabel . '_' . $order['created_at']),
+                        'date_raw'     => $order['created_at'],
+                        'date'         => date('M d, Y', strtotime($order['created_at'])),
+                        'time'         => date('h:i A', strtotime($order['created_at'])),
+                        'reference_no' => $poLabel,
+                        'remarks'      => $displayLabel,
+                        'user_name'    => '—',
+                        'debit'        => round($order['amount'], 2),
+                        'credit'       => 0.0,
+                        // Detail lines for the modal expand/collapse
+                        'lines'        => $order['lines'],
+                    ]);
+                }
+            }
+
+            /* 2) Raw COGS movements — inventory_transactions where exp_type = 0 */
             $cogsQuery = DB::table('inventory_transactions as t')
                 ->leftJoin('inventory_etransaction as e', 't.e_id', '=', 'e.id')
                 ->leftJoin('users as u', 't.user_id', '=', 'u.id')
                 ->where('t.is_deleted', 0)
-                ->where('t.type', 'TRADE PAYABLE')
-                ->where('t.payment_class', 1)
-                ->whereNotNull('t.category_id')
-                ->whereNotNull('t.payment_class')
+                ->where('t.exp_type', 0)
                 ->select(
-                    't.id', 't.created_at', 't.amount', 't.is_paid', 't.remarks',
+                    't.id', 't.created_at', 't.amount', 't.remarks',
                     'e.e_transid as reference_no', 'u.lastname as user_name'
                 );
 
@@ -748,6 +878,55 @@ class TrialBalanceController extends Controller
                     'debit'        => (float) $ex->amount,
                     'credit'       => 0.0,
                 ]);
+            }
+
+            /* 3) Adjustments — Beginning / Scrap / Ending (income_statement id = 2) */
+            $isField = DB::table('income_statement')->where('id', 2)->first();
+            if ($isField) {
+                $anchorDate = $rangeEnd ?: date('Y-m-t');
+                $anchorTs   = strtotime($anchorDate);
+
+                if (!empty($isField->beginning)) {
+                    $rows->push([
+                        'id'           => 'COGS-BEGIN',
+                        'date_raw'     => $anchorDate,
+                        'date'         => date('M d, Y', $anchorTs),
+                        'time'         => '—',
+                        'reference_no' => '—',
+                        'remarks'      => 'Beginning Inventory',
+                        'user_name'    => '—',
+                        'debit'        => (float) $isField->beginning,
+                        'credit'       => 0.0,
+                    ]);
+                }
+
+                if (!empty($isField->scrap)) {
+                    $rows->push([
+                        'id'           => 'COGS-SCRAP',
+                        'date_raw'     => $anchorDate,
+                        'date'         => date('M d, Y', $anchorTs),
+                        'time'         => '—',
+                        'reference_no' => '—',
+                        'remarks'      => 'Less: Scrap',
+                        'user_name'    => '—',
+                        'debit'        => 0.0,
+                        'credit'       => (float) $isField->scrap,
+                    ]);
+                }
+
+                if (!empty($isField->ending)) {
+                    $rows->push([
+                        'id'           => 'COGS-ENDING',
+                        'date_raw'     => $anchorDate,
+                        'date'         => date('M d, Y', $anchorTs),
+                        'time'         => '—',
+                        'reference_no' => '—',
+                        'remarks'      => 'Less: Ending Inventory',
+                        'user_name'    => '—',
+                        'debit'        => 0.0,
+                        'credit'       => (float) $isField->ending,
+                    ]);
+                }
             }
 
             return $rows->sortBy('date_raw')->values()->map(function ($r) {

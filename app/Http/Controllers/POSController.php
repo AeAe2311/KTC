@@ -58,7 +58,7 @@ class POSController extends Controller {
         // Join brand name for display in menu tiles
         $menus = DB::table('menus')
         ->leftJoin('brands', 'brands.id', '=', 'menus.brand_id')
-        ->where('menus.current_quantity', '>', 0)
+        ->where('menus.quantity', '>', 0)
         ->where('menus.is_deleted', 0)
         ->whereIn('menus.department', $deptIds)
         ->where('menus.store_code', auth()->user()->store_code)
@@ -72,6 +72,12 @@ class POSController extends Controller {
         ->orderBy('name', 'asc')
         ->where('store_code', auth()->user()->store_code)
         ->get();
+
+        $modeOfPayments = DB::table('mode_of_payment')
+            ->where('store_code', auth()->user()->store_code)
+            ->where('is_deleted', 0)
+            ->orderBy('id')
+            ->pluck('name');
 
         $table_cat = DB::table('table_categories') //leo added 4/22/25
         ->orderBy('id', 'asc')
@@ -113,7 +119,7 @@ class POSController extends Controller {
                 
             }
 
-            $SCPercent = $SCRow->percent;
+            $SCPercent = $SCRow->percent ?? 0;
             $limePercent = $limeDiscountRow->percent;
             
 
@@ -177,7 +183,7 @@ class POSController extends Controller {
             ->sum('total'), 2, '.', ',');
         /* end of Audited total */
         // if (auth()->user()->role == 2 || auth()->user()->role == 7){
-            return view('user.cashier.pos', compact('tables', 'orders', 'discountRow', 'menus', 'categories', 'subTotal', 'total', 'discount', 'SCRow', 'SCPercent','SCVal','limeDiscountRow', 'limePercent', 'limeVal','LessVatDeduction','VatExemptSales','vatsales','vat','audited','nonAudited','cashiers','priceType','table_cat'));
+            return view('user.cashier.pos', compact('tables', 'orders', 'discountRow', 'menus', 'categories', 'subTotal', 'total', 'discount', 'SCRow', 'SCPercent','SCVal','limeDiscountRow', 'limePercent', 'limeVal','LessVatDeduction','VatExemptSales','vatsales','vat','audited','nonAudited','cashiers','priceType','table_cat', 'modeOfPayments'));
         // } else {
         //     return view('user.cashier.pos-admin', compact('tables', 'orders', 'discountRow', 'menus', 'categories', 'subTotal', 'total', 'discount', 'SCRow', 'SCPercent','SCVal','limeDiscountRow', 'limePercent', 'limeVal','LessVatDeduction','VatExemptSales','vatsales','vat','audited','nonAudited','cashiers','priceType','table_cat'));
         // }
@@ -213,7 +219,7 @@ class POSController extends Controller {
 
         $menus = DB::table('menus')
         ->leftJoin('brands', 'brands.id', '=', 'menus.brand_id')
-        ->where('menus.current_quantity', '>', 0)
+        ->where('menus.quantity', '>', 0)
         ->where('menus.is_deleted', 0)
         ->whereIn('menus.department', $adminDeptIds)
         ->select('menus.*', 'brands.name as brand_name')
@@ -247,7 +253,7 @@ class POSController extends Controller {
                 
             }
 
-            $SCPercent = $SCRow->percent;
+            $SCPercent = $SCRow->percent ?? 0;
             $limePercent = $limeDiscountRow->percent;
             
 
@@ -355,7 +361,7 @@ class POSController extends Controller {
         }
 
         // Determine price based on selected type
-        $price = $menu->price;
+        $price = (float) ($menu->retail_price ?? 0) > 0 ? $menu->retail_price : $menu->price;
         $priceTypeDB = 'regular';
         $priceTypeNormalized = strtolower(trim($priceType ?? ''));
 
@@ -374,7 +380,7 @@ class POSController extends Controller {
         }
 
         // Prevent adding more than available stock
-        $availableQty = intval($menu->current_quantity);
+        $availableQty = (float) $menu->quantity;
         if ($availableQty < $qty) {
             $notif = '<div id="toast-danger" class="flex items-center w-full p-4 mb-4 text-gray-500 bg-red-200 border border-red-200 rounded-lg shadow-lg" role="alert">'
                 . '<div class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 text-red-500 bg-red-200 rounded-lg">'
@@ -425,7 +431,7 @@ class POSController extends Controller {
 
         $menu = DB::table('menus')->where('id', $corder->menu_id)->first();
         $SCRow = DB::table('service_charge')->where('user_id', auth()->id())->first();
-        $SCPercent = $SCRow->percent;
+        $SCPercent = $SCRow->percent ?? 0;
         $notif = '';
         $limeDiscountRow = DB::table('lime_discount')->where('user_id', auth()->id())->first();
         
@@ -469,7 +475,7 @@ class POSController extends Controller {
 
         $notif = '';
         
-        if ($menu->current_quantity > 0) {
+        if ($menu->quantity > 0) {
             $quantity = $corder->quantity + 1;
             $price = 0;
             if ($corder->price_type == "grab"){
@@ -477,7 +483,7 @@ class POSController extends Controller {
             } elseif ($corder->price_type == "panda") {
                 $price = $menu->panda_price;
             } else {
-                $price = $menu->price;
+                $price = (float) ($menu->retail_price ?? 0) > 0 ? $menu->retail_price : $menu->price;
             }
             $total_price = $price * $quantity;
             $current_stock = $menu->current_quantity - 1;
@@ -554,7 +560,7 @@ class POSController extends Controller {
             return;
         }
 
-        $price = $menu->price;
+        $price = (float) ($menu->retail_price ?? 0) > 0 ? $menu->retail_price : $menu->price;
         if ($priceType === 'wholesale') {
             $price = $menu->wholesale_price;
         } elseif ($priceType === 'slab') {
@@ -608,7 +614,7 @@ class POSController extends Controller {
 
         // Determine price based on current price type selection
         $priceType = strtolower(trim($order->price_type ?? ''));
-        $price = $newMenu->price;
+        $price = (float) ($newMenu->retail_price ?? 0) > 0 ? $newMenu->retail_price : $newMenu->price;
         if ($priceType === 'wholesale') {
             $price = $newMenu->wholesale_price;
         } elseif ($priceType === 'slab') {
@@ -662,7 +668,7 @@ class POSController extends Controller {
             } elseif ($order->price_type == "panda") {
                 $price = $menu->panda_price;
             } else {
-                $price = $menu->price;
+                $price = (float) ($menu->retail_price ?? 0) > 0 ? $menu->retail_price : $menu->price;
             }
             //echo $price;
             $total_price = $price * $quantity;
@@ -690,7 +696,7 @@ class POSController extends Controller {
         //Service charge section
         $SCPercent = $SCVal = 0;
         $SCRow = DB::table('service_charge')->where('user_id', auth()->id())->first();
-        $SCPercent = $SCRow->percent;
+        $SCPercent = $SCRow->percent ?? 0;
 
         //Lime discount section
         $limeDiscountRow = DB::table('lime_discount')->where('user_id', auth()->id())->first();
@@ -705,7 +711,7 @@ class POSController extends Controller {
             } elseif ($corder->price_type == "panda") {
                 $price = $menu->panda_price;
             } else {
-                $price = $menu->price;
+                $price = (float) ($menu->retail_price ?? 0) > 0 ? $menu->retail_price : $menu->price;
             }
             $total_price = $price * $quantity;
             $current_quantity = $corder->current_stock + 1;
@@ -750,7 +756,7 @@ class POSController extends Controller {
         //Service charge section
         $SCPercent = $SCVal = 0;
         $SCRow = DB::table('service_charge')->where('user_id', auth()->id())->first();
-        $SCPercent = $SCRow->percent;
+        $SCPercent = $SCRow->percent ?? 0;
 
         //Lime discount section
         $limeDiscountRow = DB::table('lime_discount')->where('user_id', auth()->id())->first();
@@ -783,7 +789,7 @@ class POSController extends Controller {
         //Service charge section
         $SCPercent = $SCVal = 0;
         $SCRow = DB::table('service_charge')->where('user_id', auth()->id())->first();
-        $SCPercent = $SCRow->percent;
+        $SCPercent = $SCRow->percent ?? 0;
 
         //Lime discount section
         $limeDiscountRow = DB::table('lime_discount')->where('user_id', auth()->id())->first();
@@ -848,9 +854,6 @@ class POSController extends Controller {
                                     <div class="grid grid-cols-12 content-center h-14 w-full text-center px-4">
                                             <div class="col-span-1 flex items-center ">
                                                 <input type="checkbox" data-slug="'. $order->slug .'" class="complimentary mr-4" id="'. $order->slug .'" '. $checkStatus .'> ';
-                if(auth()->user()->role != 7){
-                    $orderResult .= ' <input type="checkbox" data-slug="'. $order->slug .'" class="orderSelection mr-4" id="orderSelection'. $order->slug .'" '. $is_pwdCheck .'>';
-                }
                 
                 $orderResult .= '</div>
                                             <div class="col-span-1 flex items-center ">
@@ -878,7 +881,7 @@ class POSController extends Controller {
                                 ';
                 $subTotal = $subTotal + $order->total_price;
             }
-            $SCPercent = $SCRow->percent;
+            $SCPercent = $SCRow->percent ?? 0;
             $limePercent = $limeDiscountRow->percent;
             //$subTotal = $subTotal +$sc;
             $limeVal = ($limePercent / 100) * $subTotal;
@@ -923,7 +926,7 @@ class POSController extends Controller {
     }
 
     public function pay(Request $request) {
-        $sc_val = $request->sc_val;
+        $sc_val = $request->input('sc_val', 0);
         $amount = $request->amount;
         $table = $request->table;
         $order_remarks = $request->order_remarks;
@@ -931,7 +934,7 @@ class POSController extends Controller {
         $mop = $request->mop;
         $payor_name = $request->payor_name;
         $payor_number = $request->payor_number;
-        $sc_val = $request->sc_val;
+        $sc_val = $request->input('sc_val', 0);
         $discountTotal = $request->discountTotal;
         // $limepercent = $request->limepercent;
         $limediscountTotal = $request->limediscountTotal;
@@ -962,6 +965,13 @@ class POSController extends Controller {
         $grabMop = $request->grabMop;
         $pandaMop = $request->pandaMop;
         $qrphMop = $request->qrphMop;
+        $paymentAmounts = json_decode($request->input('paymentAmounts', '[]'), true);
+        $paymentDetails = [
+            'ref_no' => $request->input('ref_no'),
+            'bank_name' => $request->input('bank_name'),
+            'client_name' => $request->input('client_name'),
+            'payment_date' => $request->input('payment_date'),
+        ];
 
         /* End MOP */
         
@@ -971,7 +981,7 @@ class POSController extends Controller {
         //service charge
         $SCPercent = $SCVal = 0;
         $SCRow = DB::table('service_charge')->where('user_id', auth()->id())->first();
-        $SCPercent = $SCRow->percent;
+        $SCPercent = $SCRow->percent ?? 0;
 
         //lime discount section
         $limeDiscountRow = DB::table('lime_discount')->where('user_id', auth()->id())->first();
@@ -984,17 +994,7 @@ class POSController extends Controller {
             $type = 'DINE-IN';
         }
 
-        $id = Transaction::latest()->pluck('id')->first();
-        //$newid  = DB::table('transactions')->latest('created_at')->first();
-
-        if ($id == null) {
-            $id = 1;
-        } else {
-            $id++;
-        }
-        $nid = str_pad($id, 7, '0', STR_PAD_LEFT);
-
-        $number = date('mdY') . '-' . $nid;
+        $number = $this->generateTransactionNumber();
 
         $tranSlug = Str::random(60);
         $ntranSlug = $tranSlug;
@@ -1035,6 +1035,9 @@ class POSController extends Controller {
         $tran->fee = 0;
         $tran->is_vat = 1;
         $tran->sales_type = 0;
+        $tran->is_uuid = (string) Str::uuid();
+        $tran->local_id = null;
+        $tran->staff_id = auth()->id();
 
         // Ensure transactions are scoped to the current user/store/branch.
         $tran->store_code = auth()->user()->store_code;
@@ -1057,16 +1060,24 @@ class POSController extends Controller {
 
         $cashier = auth()->id();
 
-        if ($cashMop > 0 || $amount == 0){
+        foreach ($paymentAmounts as $payment) {
+            $paymentAmount = (float) ($payment['amount'] ?? 0);
+            $paymentMop = trim((string) ($payment['mop'] ?? ''));
+            if ($paymentAmount > 0 && $paymentMop !== '') {
+                $this->saveMOP($tran_id, $paymentMop, $paymentAmount, $cashier, $paymentDetails, $tran->number);
+            }
+        }
+
+        if (empty($paymentAmounts) && ($cashMop > 0 || $amount == 0)){
             $mop = 'CASH';
             $amount = $cashMop;
-            $this->saveMOP($tran_id, $mop, $amount , $cashier);
+            $this->saveMOP($tran_id, $mop, $amount, $cashier, $paymentDetails, $tran->number);
         }
 
         if ($ccMop > 0){
             $mop = 'CREDIT CARD - MASTERCARD';
             $amount = $ccMop;
-            $this->saveMOP($tran_id, $mop, $amount , $cashier);
+            $this->saveMOP($tran_id, $mop, $amount, $cashier, $paymentDetails, $tran->number);
         }
 
         if ($visaMop > 0){
@@ -1217,9 +1228,12 @@ class POSController extends Controller {
             $total = round(($vatsales + $SCVal + $vat),2);
 
 
-            DB::table('ordered')->insert([
-                'tran_id' => $tran_id,
+            $orderedId = DB::table('ordered')->insertGetId([
+                'tran_id' => null,
+                'tran_uuid' => $tran->is_uuid,
+                'is_uuid' => (string) Str::uuid(),
                 'menu_id' => $order->menu_id,
+                'menu_cloud_id' => $order->menu_id,
                 'quantity' => $order->quantity,
                 'department' => $order->department,
                 'branch' => $order->branch,
@@ -1246,9 +1260,32 @@ class POSController extends Controller {
                 'updated_at' => date('Y-m-d h:i:s')
             ]);
 
-            
-
             $menu = DB::table('menus')->where('id', $order->menu_id)->first();
+            $previousQuantity = (float) $menu->quantity;
+            $remainingQuantity = $previousQuantity - (float) $order->quantity;
+
+            DB::table('inventory_movement')->insert([
+                'type' => 'DELIVERY NOTE',
+                'ordered_id' => $orderedId,
+                'menu_id' => $order->menu_id,
+                'trans_id' => $tran->id,
+                'trans_number' => $tran->number,
+                'reference' => $tran->number,
+                'detail' => $tran->payor_name,
+                'unit' => $menu->unit,
+                'previous_qty' => $previousQuantity,
+                'qty_in' => 0,
+                'qty_out' => $order->quantity,
+                'remaining' => $remainingQuantity,
+                'sold_price' => $order->price,
+                'cost' => $order->food_cost,
+                'created_at' => now(),
+                'updated_at' => now(),
+                'branch_code' => $tran->branch_code,
+                'store_code' => $tran->store_code,
+                'is_uuid' => (string) Str::uuid(),
+                'is_sync' => 1,
+            ]);
 
             if ($menu->is_combo == 1) {
                 $ings = DB::table('ingredients')->where('menu_id', $menu->id)->get();
@@ -1290,9 +1327,6 @@ class POSController extends Controller {
                                     <div class="grid grid-cols-12 content-center h-14 w-full text-center px-4">
                                             <div class="col-span-1 flex items-center ">
                                                 <input type="checkbox" data-slug="'. $order->slug .'" class="complimentary mr-4" id="'. $order->slug .'" '. $checkStatus .'> ';
-                if(auth()->user()->role != 7){
-                    $orderResult .= ' <input type="checkbox" data-slug="'. $order->slug .'" class="orderSelection mr-4" id="orderSelection" '. $is_pwdCheck .'>';
-                }
                 
                 $orderResult .= '</div>
                                             <div class="col-span-1 flex items-center ">
@@ -1342,7 +1376,7 @@ class POSController extends Controller {
         ]);
         
          DB::table('service_charge')->where('user_id', auth()->id())->update([
-            'percent' => 10,
+            'percent' => 0,
         ]);
 
         DB::table('prints')->insert([
@@ -1377,7 +1411,7 @@ class POSController extends Controller {
     public function paylater(Request $request) {
         $amount = $request->amount;
         $table = $request->table;
-        $sc_val = $request->sc_val;
+        $sc_val = $request->input('sc_val', 0);
         $payor_name = $request->payor_name;
         $payor_number = $request->payor_number;
         $order_remarks = $request->order_remarks;
@@ -1430,7 +1464,7 @@ class POSController extends Controller {
             }
             $nid = str_pad($id, 7, '0', STR_PAD_LEFT);
 
-            $number = date('mdY') . '-' . $nid;
+            $number = $this->generateTransactionNumber();
 
             $tranSlug = Str::random(60);
             $ntranSlug = $tranSlug;
@@ -1442,7 +1476,7 @@ class POSController extends Controller {
 
             $discountRow = DB::table('discounts')->where('user_id', auth()->id())->first();
             $SCRow = DB::table('service_charge')->where('user_id', auth()->id())->first();
-            $SCPercent = $SCRow->percent;
+            $SCPercent = $SCRow->percent ?? 0;
             $limeDiscountRow = DB::table('lime_discount')->where('user_id', auth()->id())->first();
             //$limePercent = $limeVal = 0;
             $limePercent = $limeDiscountRow->percent;
@@ -1474,6 +1508,9 @@ class POSController extends Controller {
             $tran->vatExemptSales = $VatExemptSales;
             $tran->vatSales = $vatsales;
             $tran->vat = $vat;
+            $tran->is_uuid = (string) Str::uuid();
+            $tran->local_id = null;
+            $tran->staff_id = auth()->id();
             $tran->save();
 
             $tran_id = $tran->id;
@@ -1500,7 +1537,7 @@ class POSController extends Controller {
         foreach ($orders as $order) {
             $orderSlug = (string) Str::uuid();
 
-            $SCPercent = $SCRow->percent;
+            $SCPercent = $SCRow->percent ?? 0;
             $subtotal = $order->total_price;
             $discount = 0;
             if ($discountRow->total_customer > 0) {
@@ -1512,8 +1549,11 @@ class POSController extends Controller {
             $limeVal = ($limePercent / 100) * $subtotal;
 
             $orderedInserts[] = [
-                'tran_id' => $tran_id,
+                'tran_id' => null,
+                'tran_uuid' => $tran->is_uuid,
+                'is_uuid' => (string) Str::uuid(),
                 'menu_id' => $order->menu_id,
+                'menu_cloud_id' => $order->menu_id,
                 'quantity' => $order->quantity,
                 'amount' => $order->total_price,
                 'price_type' => $order->price_type,
@@ -1580,9 +1620,6 @@ class POSController extends Controller {
                                     <div class="grid grid-cols-12 content-center h-14 w-full text-center px-4">
                                             <div class="col-span-1 flex items-center ">
                                                 <input type="checkbox" data-slug="'. $order->slug .'" class="complimentary mr-4" id="'. $order->slug .'" '. $checkStatus .'> ';
-                if(auth()->user()->role != 7){
-                    $orderResult .= ' <input type="checkbox" data-slug="'. $order->slug .'" class="orderSelection mr-4" id="orderSelection" '. $is_pwdCheck .'>';
-                }
                 
                 $orderResult .= '</div>
                                             <div class="col-span-1 flex items-center ">
@@ -1629,7 +1666,7 @@ class POSController extends Controller {
             'percent' => 0,
         ]);
         DB::table('service_charge')->where('user_id', auth()->id())->update([
-            'percent' => 10,
+            'percent' => 0,
         ]);
         $response = array(
             'orders' => $orderResult,
@@ -1670,7 +1707,8 @@ class POSController extends Controller {
         echo json_encode($response);
     }
     public function updateServiceCharge(Request $request) {
-        $service_charge = ltrim($request->service_charge);
+        $service_charge = trim((string) $request->input('service_charge', ''));
+        $service_charge = $service_charge === '' ? 0 : (float) $service_charge;
 
         DB::table('service_charge')->where('user_id', auth()->id())->update([
             'percent' => $service_charge,
@@ -1801,14 +1839,27 @@ class POSController extends Controller {
         }
 
         $orders = DB::table('ordered')
-            ->select('ordered.*', 'menus.name')
+            ->select(
+                'ordered.*',
+                'menus.name',
+                'menus.brand_code',
+                'menus.unit',
+                'brands.name as brand_name'
+            )
             ->join('menus', 'ordered.menu_id', '=', 'menus.id')
+            ->leftJoin('brands', 'menus.brand_id', '=', 'brands.id')
             ->where('tran_id', $trans->id)
             ->get();
 
         $seniors = DB::table('seniors')->where('tran_id', $trans->id)->get();
         $payments = DB::table('payment_orders')->where('tran_id', $trans->id)->get();
         $settings = DB::table('settings')->where('id', 2)->first();
+        $paymentBreakdown = $payments->map(function ($payment) {
+            return (object) [
+                'method' => $payment->mop,
+                'amount' => $payment->amount,
+            ];
+        });
 
         $orderdineincount = DB::table('ordered')
             ->where('tran_id', $trans->id)
@@ -1823,7 +1874,64 @@ class POSController extends Controller {
         $trans->computed_total = $orders->sum('amount');
         $trans->computed_quantity = $orders->sum('quantity');
 
-        return view('user.cashier.bill', compact('orders', 'trans', 'settings','seniors','payments','ordertakeoutcount','orderdineincount'));
+        $receiptItems = [];
+        foreach ($orders->groupBy('name') as $name => $group) {
+            $quantities = $group->pluck('quantity')->map(function ($quantity) {
+                return number_format((float) $quantity, 3);
+            })->implode('/');
+            $firstOrder = $group->first();
+            $quantity = $group->sum('quantity');
+            $amount = $group->sum('amount');
+
+            $receiptItems[] = [
+                'name' => $name,
+                'brand_name' => $firstOrder->brand_name ?? '',
+                'brand_code' => $firstOrder->brand_code ?? '',
+                'total_quantity' => $quantity,
+                'total_amount' => $amount,
+                'item_count' => $group->count(),
+                'quantity_breakdown' => $quantities,
+                'menu_price' => $quantity > 0 ? $amount / $quantity : 0,
+                'unit' => $firstOrder->unit ?? 'kg',
+            ];
+        }
+
+        $subtotal = $orders->sum('amount');
+        $servicecharge = $trans->service_charge ?? 0;
+        $totaldue = $trans->total ?? ($subtotal + $servicecharge);
+        $totalDiscount = 0;
+        $change = max(0, ($trans->amount ?? 0) - ($trans->total ?? 0));
+        $value2307 = $trans->service_charge ?? 0;
+        $percent2307 = $trans->sc_percent ?? 0;
+        $pwdseniorDiscount = $trans->pwd ?? 0;
+        $numberOfSeniors = $trans->customer_with_discount ?? $seniors->count();
+        $discount = $trans->ld_value ?? 0;
+        $percentDiscount = $trans->lime_discount ?? 0;
+        $overalltotal = $trans->total ?? $totaldue;
+
+        return view('user.cashier.bill', compact(
+            'orders',
+            'trans',
+            'settings',
+            'seniors',
+            'payments',
+            'ordertakeoutcount',
+            'orderdineincount',
+            'receiptItems',
+            'subtotal',
+            'servicecharge',
+            'totaldue',
+            'totalDiscount',
+            'change',
+            'value2307',
+            'percent2307',
+            'pwdseniorDiscount',
+            'numberOfSeniors',
+            'discount',
+            'percentDiscount',
+            'overalltotal',
+            'paymentBreakdown'
+        ));
     }
 
     public function updateCurrentQuantity() {
@@ -1956,7 +2064,23 @@ class POSController extends Controller {
         
     }
 
-    public function saveMOP($tran_id, $mop, $amount , $cashier){
+    private function generateTransactionNumber(): string
+    {
+        $storeCode = auth()->user()->store_code;
+        $prefix = DB::table('settings')
+            ->where('store_code', $storeCode)
+            ->value('tr_number_1st') ?: 'LTC';
+        $datePart = now()->format('mdy');
+        $sequence = DB::table('transactions')
+            ->where('store_code', $storeCode)
+            ->where('number', 'like', $prefix . $datePart . '%')
+            ->lockForUpdate()
+            ->count() + 1;
+
+        return $prefix . $datePart . str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
+    }
+
+    public function saveMOP($tran_id, $mop, $amount, $cashier, array $details = [], $tranNumber = null){
         DB::table('payment_orders')->insert([
             'tran_id' => $tran_id,
             'mop' => $mop,
@@ -1964,6 +2088,31 @@ class POSController extends Controller {
             'cashier' => $cashier,
             'created_at' => date('Y-m-d h:i:s'),
             'updated_at' => date('Y-m-d h:i:s')
+        ]);
+
+        $paymentMethod = DB::table('mode_of_payment')
+            ->where('store_code', auth()->user()->store_code)
+            ->where('name', $mop)
+            ->first();
+
+        DB::table('payment_logs')->insert([
+            'tran_id' => $tran_id,
+            'tran_number' => $tranNumber,
+            'mop_id' => $paymentMethod->id ?? null,
+            'label' => $mop,
+            'total' => $amount,
+            'amount' => $amount,
+            'balance' => 0,
+            'cashier_id' => $cashier,
+            'type' => 0,
+            'is_deleted' => 0,
+            'ref_no' => $details['ref_no'] ?? null,
+            'bank_name' => $details['bank_name'] ?? null,
+            'client_name' => $details['client_name'] ?? null,
+            'payment_date' => $details['payment_date'] ?? null,
+            'store_code' => auth()->user()->store_code,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
     }
 
@@ -2024,9 +2173,7 @@ class POSController extends Controller {
                     $orderResult .= ' 
                                     <div class="col-span-3 flex items-center mr-1">
                                     <input type="checkbox" data-slug="'. $order->slug .'" class="complimentary mr-1" id="'. $order->slug .'" '. $checkStatus .'>
-                                    <input type="checkbox" data-slug="'. $order->slug .'" class="orderSelection mr-1" id="orderSelection'. $order->slug .'" '. $is_pwdCheck .'>
                                     
-                                    <input type="checkbox" data-slug="'. $order->slug .'" class="discSelection mr-1" id="discSelection'. $order->slug .'" '. $is_pwdCheck .'>
                                     <button  data-slug="'. $order->slug .'" class="myMsg aspect-square w-full max-w-[30px] bg-red-200 rounded-lg"><i class="uil uil-comment-alt-dots text-lg"></i></button>
                                     </div>';
                     $nameSpan = 'col-span-3';
@@ -2053,6 +2200,7 @@ class POSController extends Controller {
                             'm.id as menu_id',
                             'b.name as brand_name',
                             'm.price',
+                            'm.retail_price',
                             'm.wholesale_price',
                             'm.slab_price',
                             'm.grab_price',
@@ -2069,7 +2217,7 @@ class POSController extends Controller {
                     if ($brandOptions->count() > 0) {
                         $brandSelect = '<select class="brandSelect text-xs border border-gray-300 rounded px-2 py-1" data-slug="'. $order->slug .'">';
                         foreach ($brandOptions as $bOpt) {
-                            $price = $bOpt->price;
+                            $price = (float) ($bOpt->retail_price ?? 0) > 0 ? $bOpt->retail_price : $bOpt->price;
                             if ($priceType === 'wholesale') {
                                 $price = $bOpt->wholesale_price;
                             } elseif ($priceType === 'slab') {
@@ -2099,7 +2247,11 @@ class POSController extends Controller {
                             <button data-slug="'. $order->slug .'" class="descQty aspect-square w-full max-w-[30px] bg-red-200 rounded-lg"><i class="uil uil-minus text-lg text-red-900"></i></button>
                         </div>
                         <div class="col-span-1 flex items-center justify-center px-1">
-                            <span class="w-full text-center text-sm">'. $order->quantity .'</span>
+                            <input type="text"
+                                data-slug="'. $order->slug .'"
+                                class="orderQtyInput w-full text-center text-sm font-semibold border border-gray-300 rounded-md h-7 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                value="'. $order->quantity .'"
+                                autocomplete="off">
                         </div>
                         <div class="flex items-center justify-center">
                             <button data-slug="'. $order->slug .'" class="incQty aspect-square w-full max-w-[30px] bg-emerald-200 rounded-lg"><i class="uil uil-plus text-lg text-emerald-900"></i></button>
@@ -2234,7 +2386,7 @@ class POSController extends Controller {
             }
             $nid = str_pad($id, 7, '0', STR_PAD_LEFT);
 
-            $number = date('mdY') . '-' . $nid;
+            $number = $this->generateTransactionNumber();
 
             $tranSlug = Str::random(60);
             $ntranSlug = $tranSlug;
@@ -2368,9 +2520,6 @@ class POSController extends Controller {
                                     <div class="grid grid-cols-12 content-center h-14 w-full text-center px-4">
                                             <div class="col-span-1 flex items-center ">
                                                 <input type="checkbox" data-slug="'. $order->slug .'" class="complimentary mr-4" id="'. $order->slug .'" '. $checkStatus .'> ';
-                if(auth()->user()->role != 7){
-                    $orderResult .= ' <input type="checkbox" data-slug="'. $order->slug .'" class="orderSelection mr-4" id="orderSelection" '. $is_pwdCheck .'>';
-                }
                 
                 $orderResult .= '</div>
                                             <div class="col-span-1 flex items-center ">
@@ -2520,7 +2669,7 @@ class POSController extends Controller {
             }
             $nid = str_pad($id, 7, '0', STR_PAD_LEFT);
 
-            $number = date('mdY') . '-' . $nid;
+            $number = $this->generateTransactionNumber();
 
             $tranSlug = Str::random(60);
             $ntranSlug = $tranSlug;
@@ -2556,6 +2705,9 @@ class POSController extends Controller {
             $tran->vatExemptSales = $Guesttrans->vatExemptSales;
             $tran->vatSales = $Guesttrans->vatSales;
             $tran->vat = $Guesttrans->vat;
+            $tran->is_uuid = (string) Str::uuid();
+            $tran->local_id = null;
+            $tran->staff_id = auth()->id();
             $tran->save();
 
             $tran_id = $tran->id;
@@ -2581,8 +2733,11 @@ class POSController extends Controller {
             $guestOrdered =  DB::table('guest_ordered')->where('tran_id', $Guesttrans->id)->get();
                 foreach ($guestOrdered as $gOrder){
                     DB::table('ordered')->insert([
-                        'tran_id' => $tran_id,
+                        'tran_id' => null,
+                        'tran_uuid' => $tran->is_uuid,
+                        'is_uuid' => (string) Str::uuid(),
                         'menu_id' => $gOrder->menu_id,
+                        'menu_cloud_id' => $gOrder->menu_id,
                         'quantity' => $gOrder->quantity,
                         'amount' => $gOrder->amount,
                         'department' => $gOrder->department,

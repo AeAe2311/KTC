@@ -242,25 +242,29 @@ class IncomeStatementController extends Controller
         }
 
         // ============================================
-        // COGS FROM PURCHASED ORDERS
+        // COGS FROM ORDERED + MENUS (food cost)
+        // (unchanged — this feeds the statement's food-cost COGS aggregation)
         // ============================================
         $cogsByMonth = array_fill_keys(array_keys($months), 0);
 
-        if (Schema::hasTable('purchase_ordered') && Schema::hasTable('menus')) {
-            $cogsQuery = DB::table('purchase_ordered as po')
-                ->join('menus as m', 'po.menu_id', '=', 'm.id')
+        if (Schema::hasTable('ordered') && Schema::hasTable('menus')) {
+            $cogsQuery = DB::table('ordered')
+                ->join('sale_journal', 'ordered.tran_id', '=', 'sale_journal.id')
+                ->join('menus', 'ordered.menu_id', '=', 'menus.id')
                 ->select(
-                    DB::raw('DATE_FORMAT(po.created_at, "%Y-%m") as month'),
-                    DB::raw('SUM(po.price) as total')
+                    DB::raw('DATE_FORMAT(ordered.created_at, "%Y-%m") as month'),
+                    DB::raw('SUM(ordered.quantity * menus.food_cost) as total')
                 )
-                ->where('po.created_at', '>=', $startDate)
-                ->where('po.created_at', '<', $endDate)
+                ->where('sale_journal.status', 'PAID')
+                ->where('sale_journal.order_status', '!=', 'CANCELLED')
+                ->where('ordered.created_at', '>=', $startDate)
+                ->where('ordered.created_at', '<', $endDate)
                 ->groupBy('month');
 
             if ($userBranch) {
-                $cogsQuery->where('po.store_code', $userBranch);
+                $cogsQuery->where('sale_journal.store_code', $userBranch);
             } elseif (!empty($branchCodes)) {
-                $cogsQuery->whereIn('po.store_code', $branchCodes);
+                $cogsQuery->whereIn('sale_journal.store_code', $branchCodes);
             }
 
             foreach ($cogsQuery->get() as $row) {
@@ -273,27 +277,133 @@ class IncomeStatementController extends Controller
         $cogsTotal      = array_sum($cogsByMonth);
         $cogsPctByMonth = [];
 
+        // 20260528001 JET START LINES 286 - 350
+        $purchaseRowsByMonth = array_fill_keys(array_keys($months), []);
+        $purchasesByMonth    = array_fill_keys(array_keys($months), 0);
+
+        if (Schema::hasTable('ordered_cogs')) {
+            $purchaseQuery = DB::table('ordered_cogs as oc')
+                ->leftJoin('menus', 'menus.id', '=', 'oc.menu_id')
+                ->leftJoin('brands', 'brands.id', '=', 'menus.brand_id')
+                ->leftJoin('purchase_ordered as po', 'po.id', '=', 'oc.po_id')
+                ->leftJoin('suppliers as s', 's.id', '=', 'po.supplier_id')
+                ->select(
+                    'oc.id',
+                    'oc.po_id',
+                    'oc.si_number',
+                    'oc.po_total',
+                    'oc.status',
+                    'oc.created_at',                    
+                    'menus.name as menu_name',
+                    'brands.name as brand_name',
+                    DB::raw('COALESCE(NULLIF(TRIM(po.supplier_name), ""), s.name) as supplier_name')
+                )
+                ->where('oc.created_at', '>=', $startDate)
+                ->where('oc.created_at', '<', $endDate)
+                ->orderBy('oc.created_at')
+                ->orderBy('oc.po_id')
+                ->orderBy('oc.id');
+
+            if ($userBranch) {
+                $purchaseQuery->where('oc.store_code', $userBranch);
+            } elseif (!empty($branchCodes)) {
+                $purchaseQuery->whereIn('oc.store_code', $branchCodes);
+            }
+
+            $orders = []; // po_id => ['month', 'po_number', 'amount', 'lines']
+            foreach ($purchaseQuery->get() as $line) {
+                $orderId = $line->po_id;
+
+                if (!isset($orders[$orderId])) {
+                    $orders[$orderId] = [
+                        'month'     => Carbon::parse($line->created_at)->format('Y-m'),
+                        'po_number' => trim((string) ($line->si_number)),
+                        'supplier_name' => trim((string) ($line->supplier_name ?? '')),
+                        'amount'    => 0,
+                        'lines'     => [],
+                    ];
+                }
+
+                $menu   = preg_replace('/\s+/', ' ', trim((string) $line->menu_name));
+                $brand  = trim((string) $line->brand_name);
+                $amount = round((float) $line->po_total, 2);
+                if (strtoupper((string) $line->status) === 'VOID') {
+                $amount = -abs($amount);
+                }
+
+                $label = $brand !== '' ? $menu . ' – ' . $brand : $menu;
+                if ($amount < 0) {
+                    $label .= ' (VOID)';
+                }
+
+                $orders[$orderId]['lines'][] = [
+                    'label'  => $label,
+                    'amount' => $amount,
+                ];
+                $orders[$orderId]['amount'] += $amount;
+            }
+
+            $usedLabels = []; // the modal merges rows by label, so each P.O. label must be unique
+            foreach ($orders as $order) {
+                $monthKey = $order['month'];
+
+                if (!isset($purchasesByMonth[$monthKey])) {
+                    continue;
+                }
+
+                if (round($order['amount'], 2) == 0 && empty(array_filter($order['lines'], fn ($l) => $l['amount'] != 0))) {
+                    continue; // every line voided out; nothing to show
+                }
+
+
+                $poLabel = $order['po_number'] !== '' ? $order['po_number'] : '—';
+                $supplierName = $order['supplier_name'] !== '' ? $order['supplier_name'] : '—';
+
+                // Create the display label
+                $label = $supplierName . ' — S.I. # ' . $poLabel;
+
+                // Count duplicate labels using an array
+                $usedLabels[$label] = ($usedLabels[$label] ?? 0) + 1;
+
+                // Append the duplicate count when greater than 1
+                if ($usedLabels[$label] > 1) {
+                    $label .= ' (' . $usedLabels[$label] . ')';
+                }
+
+                $purchaseRowsByMonth[$monthKey][] = [
+                    'item'   => $label,
+                    'amount' => round($order['amount'], 2),
+                    'lines'  => $order['lines'],
+                ];
+
+                $purchasesByMonth[$monthKey] += round($order['amount'], 2);
+            }
+        } // 20260528001 JET END
+
         // ============================================
-        // COGS BREAKDOWN — from purchase_ordered
+        // COGS BREAKDOWN — from inventory_transactions (exp_type = 0)
         // Same source as the COGS value on the statement, so totals reconcile.
         // ============================================
         $cogsBreakdown = []; // [monthKey => [ ['item' => ..., 'amount' => ...], ... ]]
 
-        if (Schema::hasTable('purchase_ordered') && Schema::hasTable('menus')) {
-            $cogsBreakdownQuery = DB::table('purchase_ordered as po')
-                ->join('menus as m', 'po.menu_id', '=', 'm.id')
+        if (Schema::hasTable('inventory_transactions') && Schema::hasTable('expenses_categories')) {
+            $cogsBreakdownQuery = DB::table('inventory_transactions as it')
+                ->leftJoin('expenses_categories as ec', 'it.category_id', '=', 'ec.id')
                 ->select(
-                    DB::raw('DATE_FORMAT(po.created_at, "%Y-%m") as month'),
-                    'm.name as item_name',
-                    DB::raw('SUM(po.price) as total')
+                    DB::raw('DATE_FORMAT(it.created_at, "%Y-%m") as month'),
+                    DB::raw('COALESCE(NULLIF(TRIM(it.remarks), ""), "Unnamed COGS Item") as item_name'),
+                    DB::raw('SUM(it.amount) as total')
                 )
-                ->where('po.created_at', '>=', $startDate)
-                ->where('po.created_at', '<', $endDate);
+                ->where('it.is_deleted', 0)
+                ->where('it.exp_type', 0)
+                ->where('it.created_at', '>=', $startDate)
+                ->where('it.created_at', '<', $endDate);
 
-            if ($userBranch) {
-                $cogsBreakdownQuery->where('po.store_code', $userBranch);
-            } elseif (!empty($branchCodes)) {
-                $cogsBreakdownQuery->whereIn('po.store_code', $branchCodes);
+            // Branch filter — same logic as the COGS value query
+            if ($userBranch && Schema::hasColumn('inventory_transactions', 'branch')) {
+                $cogsBreakdownQuery->where('it.branch', $userBranch);
+            } elseif (!empty($branchCodes) && Schema::hasColumn('inventory_transactions', 'branch')) {
+                $cogsBreakdownQuery->whereIn('it.branch', $branchCodes);
             }
 
             $cogsBreakdownQuery
@@ -307,31 +417,40 @@ class IncomeStatementController extends Controller
                 ];
             }
 
-            // ---- Inject the adjustment rows so the modal reconciles with the statement ----
+            // ============================================
+            // PURCHASES — from ordered_cogs
+            // Lines that belong to one purchase order share a po_id. Each order becomes one row
+            // ("P.O. # <si_number>") whose `lines` list its items ("menu_name – brand_name", po_total).
+            // SALES rows add to the order; VOID rows are shown negative and subtract from it.
+            // Added to COGS between Beginning and Ending Inventory.
+            // 20260528001 JET START LINES 406 - 439
+            // ============================================
             $is_field = DB::table('income_statement')->where('id', 2)->first();
 
-            if ($is_field) {
-                foreach ($months as $monthKey => $label) {
-                    if (!empty($is_field->beginning)) {
-                        $cogsBreakdown[$monthKey][] = [
-                            'item'   => 'Beginning Inventory',
-                            'amount' => (float) $is_field->beginning,
-                        ];
-                    }
-                    if (!empty($is_field->scrap)) {
-                        $cogsBreakdown[$monthKey][] = [
-                            'item'   => 'Less: Scrap',
-                            'amount' => -1 * (float) $is_field->scrap,
-                        ];
-                    }
-                    if (!empty($is_field->ending)) {
-                        $cogsBreakdown[$monthKey][] = [
-                            'item'   => 'Less: Ending Inventory',
-                            'amount' => -1 * (float) $is_field->ending,
-                        ];
-                    }
+            foreach ($months as $monthKey => $label) {
+                if ($is_field && !empty($is_field->beginning)) {
+                    $cogsBreakdown[$monthKey][] = [
+                        'item'   => 'Beginning Inventory',
+                        'amount' => (float) $is_field->beginning,
+                    ];
                 }
-            }
+                // Purchases sit between Beginning and Ending Inventory
+                foreach ($purchaseRowsByMonth[$monthKey] as $purchaseRow) {
+                    $cogsBreakdown[$monthKey][] = $purchaseRow;
+                }
+                if ($is_field && !empty($is_field->scrap)) {
+                    $cogsBreakdown[$monthKey][] = [
+                        'item'   => 'Less: Scrap',
+                        'amount' => -1 * (float) $is_field->scrap,
+                    ];
+                }
+                // if ($is_field && !empty($is_field->ending)) {
+                //     $cogsBreakdown[$monthKey][] = [
+                //         'item'   => 'Less: Ending Inventory',
+                //         'amount' => -1 * (float) $is_field->ending,
+                //     ];
+                // }
+            } // 20260528001 JET END
         }
 
         // ============================================
@@ -344,49 +463,6 @@ class IncomeStatementController extends Controller
 
         $grossProfitByMonth    = [];
         $grossProfitPctByMonth = [];
-        $cogsPctByMonth        = [];
-
-        if (Schema::hasTable('purchase_ordered') && Schema::hasTable('menus')) {
-            $cogsValueQuery = DB::table('purchase_ordered as po')
-                ->join('menus as m', 'po.menu_id', '=', 'm.id')
-                ->select(
-                    DB::raw('DATE_FORMAT(po.created_at, "%Y-%m") as month'),
-                    DB::raw('SUM(po.price) as total')
-                )
-                ->where('po.created_at', '>=', $startDate)
-                ->where('po.created_at', '<', $endDate)
-                ->groupBy('month');
-
-            if ($userBranch) {
-                $cogsValueQuery->where('po.store_code', $userBranch);
-            } elseif (!empty($branchCodes)) {
-                $cogsValueQuery->whereIn('po.store_code', $branchCodes);
-            }
-
-            foreach ($cogsValueQuery->get() as $row) {
-                if (isset($cogsValueByMonth[$row->month])) {
-                    $cogsValueByMonth[$row->month] = (float) $row->total;
-                }
-            }
-
-            $is_field = DB::table('income_statement')->where('id', 2)->first();
-
-            foreach ($months as $monthKey => $label) {
-                $cogsValueByMonth[$monthKey] =
-                    ($is_field->beginning ?? 0) +
-                    ($cogsValueByMonth[$monthKey] ?? 0) -
-                    ($is_field->scrap ?? 0) -
-                    ($is_field->ending ?? 0);
-            }
-        }
-
-        $cogsValue = array_sum($cogsValueByMonth);
-
-        foreach ($months as $monthKey => $label) {
-            $cogsPctByMonth[$monthKey] = ($salesByMonth[$monthKey] ?? 0) > 0
-                ? ($cogsValueByMonth[$monthKey] / $salesByMonth[$monthKey]) * 100
-                : 0.0;
-        }
 
         if (Schema::hasTable('inventory_transactions') && Schema::hasTable('expenses_categories')) {
             $categoryIndex = [];
@@ -433,6 +509,49 @@ class IncomeStatementController extends Controller
                 ->get();
 
             $is_field = DB::table('income_statement')->where('id', 2)->first();
+
+            $cogsInventoryQuery = DB::table('inventory_transactions as it')
+                ->join('expenses_categories as ec', 'it.category_id', '=', 'ec.id')
+                ->select(
+                    DB::raw('DATE_FORMAT(it.created_at, "%Y-%m") as month'),
+                    DB::raw('SUM(it.amount) as total')
+                )
+                ->where('ec.is_deleted', 0)
+                ->where('it.is_deleted', 0)
+                ->where('it.exp_type', 0)
+                ->where('it.created_at', '>=', $startDate)
+                ->where('it.created_at', '<', $endDate)
+                ->groupBy('month');
+
+            if ($userBranch && Schema::hasColumn('inventory_transactions', 'branch')) {
+                $cogsInventoryQuery->where('it.branch', $userBranch);
+            } elseif (!empty($branchCodes) && Schema::hasColumn('inventory_transactions', 'branch')) {
+                $cogsInventoryQuery->whereIn('it.branch', $branchCodes);
+            }
+
+            foreach ($cogsInventoryQuery->get() as $row) {
+                if (isset($cogsValueByMonth[$row->month])) {
+                    $cogsValueByMonth[$row->month] = (float) $row->total;
+                }
+            }
+
+            //2020052801 JET START LINES 500 - 508
+            foreach ($months as $monthKey => $label) {
+                $cogsValueByMonth[$monthKey] =
+                    ($is_field->beginning ?? 0) +
+                    ($cogsValueByMonth[$monthKey] ?? 0) +
+                    ($purchasesByMonth[$monthKey] ?? 0) -
+                    ($is_field->scrap ?? 0) -
+                    ($is_field->ending ?? 0);
+            } //2020052801 JET END
+
+            $cogsValue = array_sum($cogsValueByMonth);
+
+            foreach ($months as $monthKey => $label) {
+                $cogsPctByMonth[$monthKey] = ($salesByMonth[$monthKey] ?? 0) > 0
+                    ? ($cogsValueByMonth[$monthKey] / $salesByMonth[$monthKey]) * 100
+                    : 0.0;
+            }
 
             foreach ($expenseRows as $row) {
                 $categoryLabel = trim($row->category) ?: 'Uncategorized';

@@ -11,7 +11,7 @@
             background: transparent;
         }
     </style>
-    @section('page_title', 'Dahon at Mesa')
+    @section('page_title', 'ORDER PAGE')
     
     @php 
         $roleUser = Auth::user()->role;
@@ -342,7 +342,17 @@
 
                             <div class="col-span-2">
                                 
-                                <div class="grid grid-cols-4 gap-2 h-50 overflow-y-hidden overflow-x-hidden">
+                                <div class="grid grid-cols-4 gap-2 h-50 overflow-y-auto overflow-x-hidden">
+                                    @foreach($modeOfPayments as $modeOfPayment)
+                                        <div data-mop="{{ $modeOfPayment }}" class="dynamicMopButton mopButton text-white bg-blue-600 font-medium rounded-lg text-sm px-3 py-2 items-center w-full">
+                                            <button type="button" data-mop="{{ $modeOfPayment }}" class="mopButton text-white bg-blue-600 font-medium rounded-lg text-sm text-center inline-flex items-center justify-center w-full">
+                                                <span class="font-bold text-center">{{ $modeOfPayment }}</span>
+                                            </button>
+                                        </div>
+                                    @endforeach
+                                </div>
+
+                                <div id="legacyMopGrid" class="hidden grid grid-cols-4 gap-2 h-50 overflow-y-hidden overflow-x-hidden">
 
                                     <!-- CASH -->
                                     <div data-mop="CASH" class="mopButton text-white bg-emerald-500  font-medium rounded-lg text-sm px-5  items-center w-full">
@@ -518,6 +528,7 @@
                                     
                                 </div>
                             </div>
+                            <input type="text" id="mopAmount" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 mb-2 text-center" disabled>
                             <div>
                             <!-- right content -->
                             <div>
@@ -536,6 +547,24 @@
                                         <input type="text" id="order_remarks" name="payor_number" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
                                         </label>
                                     </div>
+                                        <div class="grid grid-cols-2 gap-2 mb-2">
+                                            <label class="block text-xs font-medium text-gray-900">
+                                                Reference No.
+                                                <input type="text" id="ref_no" name="ref_no" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2">
+                                            </label>
+                                            <label class="block text-xs font-medium text-gray-900">
+                                                Bank
+                                                <input type="text" id="bank_name" name="bank_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2">
+                                            </label>
+                                            <label class="block text-xs font-medium text-gray-900">
+                                                Client
+                                                <input type="text" id="client_name" name="client_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2">
+                                            </label>
+                                            <label class="block text-xs font-medium text-gray-900">
+                                                Payment Date
+                                                <input type="date" id="payment_date" name="payment_date" value="{{ now()->toDateString() }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2">
+                                            </label>
+                                        </div>
                                 </div>
                                 <div class="mb-3 flex justify-between w-full">
                                     <span class="text-1xl">Amount : ₱ <span id="actualAmount">{{ number_format($total, 2, '.', ',') }}</span></span>
@@ -647,8 +676,8 @@
                     <div class="p-6 space-y-4">
                         <!-- <input type="hidden" id="paymentMethod"> -->
                         <div class="mb-6">
-                            <label for="service_charge" class="block mb-2 text-sm font-medium text-gray-900">Percent of Service Charge</label>
-                            <input type="number" id="service_charge" name="service_charge" value="{{ $SCRow->percent }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" autocomplete="off">
+                            <label for="service_charge" class="block mb-2 text-sm font-medium text-gray-900">2307 %</label>
+                            <input type="number" id="service_charge" name="service_charge" value="{{ $SCRow->percent ?? 0 }}" min="0" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" autocomplete="off">
                         </div>
                         <!-- <div class="mb-6">
                             <label for="total_customer" class="block mb-2 text-sm font-medium text-gray-900">Total Number of Customers</label>
@@ -1103,19 +1132,22 @@
                                             @continue
                                         @endif
                                         @php
-                                            $priceCandidates = array_filter([$menu->price, $menu->wholesale_price, $menu->slab_price], function ($v) {
+                                            $retailPrice = is_numeric($menu->retail_price ?? null) && $menu->retail_price > 0
+                                                ? $menu->retail_price
+                                                : ($menu->price ?? 0);
+                                            $priceCandidates = array_filter([$retailPrice, $menu->wholesale_price, $menu->slab_price], function ($v) {
                                                 return is_numeric($v) && $v > 0;
                                             });
-                                            $minPrice = count($priceCandidates) ? min($priceCandidates) : ($menu->price ?? 0);
+                                            $minPrice = count($priceCandidates) ? min($priceCandidates) : $retailPrice;
                                             $minLabel = 'Retail';
-                                            if ($minPrice === $menu->wholesale_price) {
+                                            if ((float) $minPrice === (float) $menu->wholesale_price) {
                                                 $minLabel = 'Wholesale';
                                             }
-                                            if ($minPrice === $menu->slab_price) {
+                                            if ((float) $minPrice === (float) $menu->slab_price) {
                                                 $minLabel = 'Slab';
                                             }
                                         @endphp
-                                        <a data-slug="{{$menu->slug}}" data-price="{{ $menu->price }}" data-wholesale="{{ $menu->wholesale_price }}" data-slab="{{ $menu->slab_price }}" class="relative p-2 w-full h-44 xs1:h-64 sm:p-3 sm:w-52 sm:h-80 bg-white border {{ ($menu->current_quantity > $menu->reorder_point) ? 'border-neutral-200' : 'border-red-500 shadow-red-300' }}  rounded-xl shadow-lg cursor-pointer hover:scale-105 transition-all menu">
+                                        <a data-slug="{{$menu->slug}}" data-price="{{ $retailPrice }}" data-wholesale="{{ $menu->wholesale_price }}" data-slab="{{ $menu->slab_price }}" class="relative p-2 w-full h-44 xs1:h-64 sm:p-3 sm:w-52 sm:h-80 bg-white border {{ ($menu->quantity > $menu->reorder_point) ? 'border-neutral-200' : 'border-red-500 shadow-red-300' }}  rounded-xl shadow-lg cursor-pointer hover:scale-105 transition-all menu">
                                             <div class="absolute top-2 left-2 px-2 py-1 bg-emerald-500 text-white text-[10px] font-semibold rounded-md z-20">
                                                 {{ $minLabel }} Price
                                             </div>
@@ -1149,19 +1181,25 @@
                                                     </div>
                                                 @endif
                                                 @php
-                                                    $priceCandidates = array_filter([$menu->price, $menu->wholesale_price, $menu->slab_price], function ($v) {
-                                                        return is_numeric($v);
+                                                    $retailPrice = is_numeric($menu->retail_price ?? null) && $menu->retail_price > 0
+                                                        ? $menu->retail_price
+                                                        : ($menu->price ?? 0);
+                                                    $priceCandidates = array_filter([$retailPrice, $menu->wholesale_price, $menu->slab_price], function ($v) {
+                                                        return is_numeric($v) && $v > 0;
                                                     });
-                                                    $minPrice = count($priceCandidates) ? min($priceCandidates) : ($menu->price ?? 0);
+                                                    $minPrice = count($priceCandidates) ? min($priceCandidates) : $retailPrice;
                                                     $minLabel = 'Retail';
-                                                    if ($minPrice === $menu->wholesale_price) {
+                                                    if ((float) $minPrice === (float) $menu->wholesale_price) {
                                                         $minLabel = 'Wholesale';
                                                     }
-                                                    if ($minPrice === $menu->slab_price) {
+                                                    if ((float) $minPrice === (float) $menu->slab_price) {
                                                         $minLabel = 'Slab';
                                                     }
                                                 @endphp
                                                 <div class="sm:h-1/3 flex flex-col justify-center items-center">
+                                                    <p class="text-[10px] text-gray-600">
+                                                        Stock: {{ number_format($menu->quantity, 3) }} {{ strtoupper($menu->unit ?: 'KG') }}
+                                                    </p>
                                                     <p class="text-xs font-bold sm:text-xl">
                                                         ₱ {{number_format($minPrice, 2, '.', ',')}}
                                                     </p>
@@ -1179,19 +1217,22 @@
                                                 @continue
                                             @endif
                                             @php
-                                                $priceCandidates = array_filter([$menu->price, $menu->wholesale_price, $menu->slab_price], function ($v) {
+                                                $retailPrice = is_numeric($menu->retail_price ?? null) && $menu->retail_price > 0
+                                                    ? $menu->retail_price
+                                                    : ($menu->price ?? 0);
+                                                $priceCandidates = array_filter([$retailPrice, $menu->wholesale_price, $menu->slab_price], function ($v) {
                                                     return is_numeric($v) && $v > 0;
                                                 });
-                                                $minPrice = count($priceCandidates) ? min($priceCandidates) : ($menu->price ?? 0);
+                                                $minPrice = count($priceCandidates) ? min($priceCandidates) : $retailPrice;
                                                 $minLabel = 'Retail';
-                                                if ($minPrice === $menu->wholesale_price) {
+                                                if ((float) $minPrice === (float) $menu->wholesale_price) {
                                                     $minLabel = 'Wholesale';
                                                 }
-                                                if ($minPrice === $menu->slab_price) {
+                                                if ((float) $minPrice === (float) $menu->slab_price) {
                                                     $minLabel = 'Slab';
                                                 }
                                             @endphp
-                                            <div data-slug="{{$menu->slug}}" data-price="{{ $menu->price }}" data-wholesale="{{ $menu->wholesale_price }}" data-slab="{{ $menu->slab_price }}" class="relative p-2 w-full h-44 xs1:h-64 sm:p-3 sm:w-52 sm:h-80 bg-white border {{ ($menu->current_quantity > $menu->reorder_point) ? 'border-neutral-200' : 'border-red-500 shadow-red-300' }}  rounded-xl shadow-lg cursor-pointer hover:scale-105 transition-all menu">
+                                                <div data-slug="{{$menu->slug}}" data-price="{{ $retailPrice }}" data-wholesale="{{ $menu->wholesale_price }}" data-slab="{{ $menu->slab_price }}" class="relative p-2 w-full h-44 xs1:h-64 sm:p-3 sm:w-52 sm:h-80 bg-white border {{ ($menu->quantity > $menu->reorder_point) ? 'border-neutral-200' : 'border-red-500 shadow-red-300' }}  rounded-xl shadow-lg cursor-pointer hover:scale-105 transition-all menu">
                                                 <div class="absolute top-2 left-2 px-2 py-1 bg-emerald-500 text-white text-[10px] font-semibold rounded-md z-20">
                                                     {{ $minLabel }} Price
                                                 </div>
@@ -1238,6 +1279,9 @@
                                                         }
                                                     @endphp
                                                     <div class="sm:h-1/3 flex flex-col justify-center items-center">
+                                                        <p class="text-[10px] text-gray-600">
+                                                            Stock: {{ number_format($menu->quantity, 3) }} {{ strtoupper($menu->unit ?: 'KG') }}
+                                                        </p>
                                                         <p class="text-xs font-bold sm:text-xl">
                                                             ₱ {{number_format($minPrice, 2, '.', ',')}}
                                                         </p>
@@ -1351,9 +1395,11 @@
                                                 <button data-slug="{{ $order->slug }}" class="descQty aspect-square w-full max-w-[30px] bg-red-200 rounded-lg"><i class="uil uil-minus text-lg text-red-900"></i></button>
                                             </div>
                                             <div class="col-span-1 flex items-center justify-center px-1">
-                                                {{-- <p class="w-full text-center text-sm font-semibold border-0 h-7 leading-7">{{ $order->quantity }}</p> --}}
-                                                <span class="w-full text-center text-sm">{{ $order->quantity }}</span>
-                                                {{--<input type="text" id="orderqty" data-slug="{{ $order->slug }}" class="w-full text-center text-sm font-semibold border-0 h-7 focus:border-gray-500" value="">--}}
+                                                <input type="text"
+                                                    data-slug="{{ $order->slug }}"
+                                                    class="orderQtyInput w-full text-center text-sm font-semibold border border-gray-300 rounded-md h-7 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                                    value="{{ $order->quantity }}"
+                                                    autocomplete="off">
                                             </div>
                                             <div class="flex items-center justify-center">
                                                 <button data-slug="{{ $order->slug }}" class="incQty aspect-square w-full max-w-[30px] bg-emerald-200 rounded-lg"><i class="uil uil-plus text-lg text-emerald-900"></i></button>
@@ -1432,7 +1478,7 @@
                                                 <!-- service charge -->
                                                 <div class="grid grid-cols-2">
                                                     <div class="justify-self-start flex gap-x-2 items-center">
-                                                        <strong class="text-slate-600 text-base font-medium w-full">Service Charge</strong>
+                                                        <strong class="text-slate-600 text-base font-medium w-full">2307</strong>
                                                         <button data-modal-target="ServiceChargeModal" data-modal-toggle="ServiceChargeModal" type="button" class="text-blue-600"><span><svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="M180-180h44l443-443-44-44-443 443v44Zm614-486L666-794l42-42q17-17 42-17t42 17l44 44q17 17 17 42t-17 42l-42 42Zm-42 42L248-120H120v-128l504-504 128 128Zm-107-21-22-22 44 44-22-22Z"/></svg></span></button>
                                                        
                                                         
@@ -1507,7 +1553,7 @@
                                             <div class=" row-span-1 flex items-center gap-2 mb-2">
                                                 @if(Auth::user()->role != 7)
                                                     <button id="payButton" type="button" class="w-full text-gray-50 bg-gradient-to-r from-green-600 to-teal-500 hover:bg-gradient-to-bl font-medium rounded-lg text-sm px-5 py-2.5 text-center">Pay</button>
-                                                    <button id="payLaterButton" type="button" class="w-full text-gray-50 bg-gradient-to-r from-purple-600 to-blue-500 hover:bg-gradient-to-bl font-medium rounded-lg text-sm px-5 py-2.5 text-center">Pay later</button>
+                                                    <!-- <button id="payLaterButton" type="button" class="w-full text-gray-50 bg-gradient-to-r from-purple-600 to-blue-500 hover:bg-gradient-to-bl font-medium rounded-lg text-sm px-5 py-2.5 text-center">Pay later</button> -->
                                                 @else
                                                     <button id="commitButton" type="button" class="w-full m-auto text-gray-50 bg-gradient-to-r from-emerald-600 to-green-500 hover:bg-gradient-to-bl font-medium rounded-lg text-sm px-5 py-2.5 text-center">Commit</button>
                                                 @endif
@@ -1578,23 +1624,52 @@
                 $('.closeTableModal').click();
             });
 
-            jQuery(document).on("blur","#orderqty", function(){
-                var slug = $(this).data('slug');
+            // Allow only digits and up to 3 decimal places while typing
+            jQuery(document).on("input", ".orderQtyInput", function() {
+                var val = $(this).val();
+                // Remove invalid characters
+                val = val.replace(/[^0-9.]/g, '');
+                // Only one decimal point allowed
+                var parts = val.split('.');
+                if (parts.length > 2) {
+                    val = parts[0] + '.' + parts.slice(1).join('');
+                }
+                // Limit to 3 decimal places
+                parts = val.split('.');
+                if (parts[1] !== undefined && parts[1].length > 3) {
+                    val = parts[0] + '.' + parts[1].substring(0, 3);
+                }
+                $(this).val(val);
+            });
+
+            jQuery(document).on("blur", ".orderQtyInput", function(){
+                var $input = $(this);
+                var slug = $input.data('slug');
                 var _token = $('input[name="_token"]').val() || $('meta[name="csrf-token"]').attr('content');
-                var qty = $('#orderqty').val();
-                //alert(qty);
+                var qty = parseFloat($input.val());
+
+                // Validation: must be a number > 0
+                if (isNaN(qty) || qty <= 0) {
+                    alert('Please enter a valid quantity greater than 0.');
+                    // Optionally reload to restore original value
+                    location.reload();
+                    return;
+                }
+
+                // Round to 3 decimals to avoid floating point issues
+                qty = Math.round(qty * 1000) / 1000;
+
                 $.ajax({
-                    url:"{{ route('pos.addqty') }}",
-                    method:"POST",
+                    url: "{{ route('pos.addqty') }}",
+                    method: "POST",
                     dataType: 'json',
-                    data:{
+                    data: {
                         slug: slug,
                         _token: _token,
                         qty: qty
                     },
-                    success:function(result){
-                         $('#ordersCount').html(result.ordersCount);
-                        //$('#ordersCount').html(result.orders.length);
+                    success: function(result){
+                        $('#ordersCount').html(result.ordersCount);
                         $('#ordersDiv').html(result.orders);
                         $('#subTotal').html(result.subTotal);
                         $('#discountTotal').html(result.discount);
@@ -1605,18 +1680,28 @@
                         $('#sc_val').val(result.ServiceCharge);
                         $('#sctotal').html(result.ServiceCharge);
                         $('#payNowButton').data('amount', result.amount);
-                        $('#notifDiv').html(result.thisNotif); 
+                        $('#notifDiv').html(result.thisNotif);
 
-                        $('#LessVatDeduction').val(result.LessVatDeduction); 
-                        $('#VatExemptSales').val(result.VatExemptSales); 
-                        $('#vatsales').val(result.vatsales); 
+                        $('#LessVatDeduction').val(result.LessVatDeduction);
+                        $('#VatExemptSales').val(result.VatExemptSales);
+                        $('#vatsales').val(result.vatsales);
                         $('#vat').val(result.vat);
-                        
-                         $('#limediscountTotalValue').html(result.limediscount);
-                         $('#discountTotalValue').html(result.discount);
-                         
-                    } 
-                })
+
+                        $('#limediscountTotalValue').html(result.limediscount);
+                        $('#discountTotalValue').html(result.discount);
+                    },
+                    error: function(xhr) {
+                        console.error('Quantity update failed:', xhr.responseText);
+                        alert('Failed to update quantity. Please try again.');
+                    }
+                });
+            });
+
+            // Optional: submit on Enter key for quicker workflow
+            jQuery(document).on("keypress", ".orderQtyInput", function(e) {
+                if (e.which === 13) { // Enter key
+                    $(this).blur();
+                }
             });
 
             $('.scroll-left-menu').click(function() {
@@ -1855,7 +1940,7 @@
             jQuery(document).on("click", ".complimentary", function(){
                 var slug = $(this).data('slug');
                 var _token = $('input[name="_token"]').val();
-                var checkbox = $('#'+slug).is(":checked")
+                var checkbox = $(this).is(":checked");
                 /* if ($('.complimentary').is(":checked")){
                     $('.complimentary').prop('checked', false);
                 } else {
@@ -1998,10 +2083,12 @@
                 } else {
 
                 
-                    var mop = '';
+                    var mop = 'mopAmount';
 
                     /* start of getting mode of payment value */
-                    if (mopSelected == 'CASH'){
+                    /* Legacy payment inputs are retained for compatibility; new payment modes
+                       use the single dynamically selected amount input. */
+                    if (false && mopSelected == 'CASH'){
                         mop = 'cashMop';
                     } else if (mopSelected == 'CREDIT CARD - MASTERCARD'){
                         mop = 'ccMop';
@@ -2042,6 +2129,7 @@
                     }
 
                     /* end of getting mode of payment value */
+                    mop = 'mopAmount';
 
                     //alert(mop)
 
@@ -2073,7 +2161,7 @@
 
                     /* Start of computation */
 
-                    var cashMop = ( $('#cashMop').val() == '' ) ? 0 : parseFloat( $('#cashMop').val() );
+                    var cashMop = ( $('#mopAmount').val() == '' ) ? 0 : parseFloat( $('#mopAmount').val() );
                     var ccMop = ( $('#ccMop').val() == '' ) ? 0 : parseFloat( $('#ccMop').val() );
                     var visaMop = ( $('#visaMop').val() == '' ) ? 0 : parseFloat( $('#visaMop').val() );
                     var gcashMop = ( $('#gcashMop').val() == '' ) ? 0 : parseFloat( $('#gcashMop').val() );
@@ -2093,7 +2181,7 @@
                     var qrphMop = ( $('#qrphMop').val() == '' ) ? 0 : parseFloat( $('#qrphMop').val() );
 
                     var total = 0;
-                    total = cashMop + ccMop + visaMop + gcashMop + wcpMop + amexMop + bdoMop + bancnetMop + dinersMop + dpMop + giftMop + jcbMop + mayaMop + grabPayMop + unionMop + grabMop + pandaMop + qrphMop ;
+                    total = cashMop;
                     $('#totalPayment').text(total.toFixed(2));
 
                     /* end of computation */
@@ -2210,6 +2298,8 @@
                     $('#grabMop').val('');
                     $('#pandaMop').val('');
                     $('#qrphMop').val('');
+                    $('#mopAmount').val('').prop('disabled', true);
+                    $('#mop').val('');
                     $('#totalPayment').text('0');
                     $('#openMOPModal').click();
                 }
@@ -2248,6 +2338,10 @@
                 var vatsales = $('#vatsales').val();
                 var vat = $('#vat').val();
                 var numPacks = $('#numPacks').val();
+                var ref_no = $('#ref_no').val();
+                var bank_name = $('#bank_name').val();
+                var client_name = $('#client_name').val();
+                var payment_date = $('#payment_date').val();
 
                 /* Start of computation */
 
@@ -2321,6 +2415,14 @@
                             grabMop : grabMop ,
                             pandaMop : pandaMop ,
                             qrphMop : qrphMop ,
+                            paymentAmounts: JSON.stringify([{
+                                mop: mop,
+                                amount: parseFloat($('#mopAmount').val() || 0)
+                            }]),
+                            ref_no: ref_no,
+                            bank_name: bank_name,
+                            client_name: client_name,
+                            payment_date: payment_date,
                             _token: _token
                         },
                         success:function(result){
@@ -2518,23 +2620,23 @@
                 $('#openMenuMessageModal').click();
                 $('#msgtxt').val('');
             });
-            jQuery(document).on("click", ".orderSelection", function(){
-                var slug = $(this).data('slug');
-                var _token = $('input[name="_token"]').val();
-                var checkbox = $('#orderSelection'+slug).is(":checked")
-                $.ajax({
-                    url:"{{ route('pos.discountSelected') }}",
-                    method:"POST",
-                    dataType: 'json',
-                    data:{
-                        slug: slug,
-                        _token: _token,
-                        checkbox: checkbox
-                    },
-                    success:function(result){
-                    }
-                })
-            });
+            // jQuery(document).on("click", ".orderSelection", function(){
+            //     var slug = $(this).data('slug');
+            //     var _token = $('input[name="_token"]').val();
+            //     var checkbox = $('#orderSelection'+slug).is(":checked")
+            //     $.ajax({
+            //         url:"{{ route('pos.discountSelected') }}",
+            //         method:"POST",
+            //         dataType: 'json',
+            //         data:{
+            //             slug: slug,
+            //             _token: _token,
+            //             checkbox: checkbox
+            //         },
+            //         success:function(result){
+            //         }
+            //     })
+            // });
 
             jQuery(document).on("click", ".changePriceBtn", function(){
                 var slug = $(this).data('slug');
@@ -2579,23 +2681,23 @@
             });
 
 
-            jQuery(document).on("click", ".discSelection", function(){
-                var slug = $(this).data('slug');
-                var _token = $('input[name="_token"]').val();
-                var checkbox = $('#discSelection'+slug).is(":checked")
-                $.ajax({
-                    url:"{{ route('pos.ownerdiscSelected') }}",
-                    method:"POST",
-                    dataType: 'json',
-                    data:{
-                        slug: slug,
-                        _token: _token,
-                        checkbox: checkbox
-                    },
-                    success:function(result){
-                    }
-                })
-            });
+            // jQuery(document).on("click", ".discSelection", function(){
+            //     var slug = $(this).data('slug');
+            //     var _token = $('input[name="_token"]').val();
+            //     var checkbox = $('#discSelection'+slug).is(":checked")
+            //     $.ajax({
+            //         url:"{{ route('pos.ownerdiscSelected') }}",
+            //         method:"POST",
+            //         dataType: 'json',
+            //         data:{
+            //             slug: slug,
+            //             _token: _token,
+            //             checkbox: checkbox
+            //         },
+            //         success:function(result){
+            //         }
+            //     })
+            // });
 
             jQuery(document).on("click", "#acceptMenuRemarks", function(){
                 var slug = $(this).data('slug');
@@ -2686,6 +2788,8 @@
                     var mop = $(this).data('mop');
                     //$('#mopselected').val(mop);
                     $('#selectedMOPtxt').text(mop);
+                    $('#mop').val(mop);
+                    $('#mopAmount').prop('disabled', false).focus();
                     //$('#paymentMethod').val('1');
 
                     {{--$.ajax({

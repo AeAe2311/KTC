@@ -16,11 +16,13 @@ class SaveSaleReportController extends Controller
         $startDate = $request->date('start_date')?->startOfDay() ?? now()->startOfDay();
         $endDate = $request->date('end_date')?->endOfDay() ?? now()->endOfDay();
         $summary = $this->summary($startDate, $endDate);
+        $existingReport = $this->existingReport($startDate, $endDate);
 
         return view('user.cashier.submit-salesreport', [
             'startDate' => $startDate,
             'endDate' => $endDate,
             'summary' => $summary,
+            'existingReport' => $existingReport,
         ]);
     }
 
@@ -40,10 +42,27 @@ class SaveSaleReportController extends Controller
             abort(500, 'Sales report duplicate tables are not available.');
         }
 
-        DB::transaction(function () use ($startDate, $endDate, $summary, $now): void {
+        $voidedReportNumber = null;
+
+        DB::transaction(function () use ($startDate, $endDate, $summary, $now, &$voidedReportNumber): void {
+            $existingReport = $this->existingReport($startDate, $endDate);
+
+            if ($existingReport) {
+                DB::table('sales_report_transaction')
+                    ->where('id', $existingReport->id)
+                    ->update([
+                        'is_deleted' => 1,
+                        'updated_at' => $now,
+                    ]);
+                $voidedReportNumber = $existingReport->trans_number;
+            }
+
             $reportUuid = (string) Str::uuid();
+            $prefix = DB::table('settings')
+                ->where('store_code', Auth::user()->store_code)
+                ->value('tr_number_1st') ?: 'KTC';
             $reportId = DB::table('sales_report_transaction')->insertGetId([
-            'trans_number' => 'SR-' . $now->format('YmdHis'),
+            'trans_number' => 'SR-' . $prefix . $now->format('YmdHis'),
             'completed' => $summary['completed'],
             'ar' => $summary['ar'],
             'cancelled' => $summary['cancelled'],
@@ -91,16 +110,31 @@ class SaveSaleReportController extends Controller
                 DB::table('sales_report_transactions_duplicate')->insert($duplicate);
 
                 $orderedItems = DB::table('ordered')
-                    ->where('tran_id', $transaction->local_id ?? $transaction->id)
                     ->where('store_code', Auth::user()->store_code)
+                    ->where(function ($query) use ($transaction): void {
+                        $query->where('tran_uuid', $transaction->is_uuid);
+
+                        if ($transaction->local_id ?? null) {
+                            $query->orWhere('tran_id', $transaction->local_id);
+                        }
+
+                        $query->orWhere('tran_id', $transaction->id);
+                    })
                     ->get();
 
                 foreach ($orderedItems as $item) {
+                    $menuUuid = $item->menu_uuid ?? DB::table('menus')
+                        ->where('id', $item->menu_id ?? null)
+                        ->where('store_code', Auth::user()->store_code)
+                        ->value('is_uuid');
                     $orderedUuid = (string) Str::uuid();
                     $ordered = $this->copyColumns((array) $item, $orderedColumns, [
                         'is_uuid' => $orderedUuid,
+                        'local_id' => null,
+                        'tran_id' => null,
+                        'tran_uuid' => $transaction->is_uuid ?? null,
+                        'menu_uuid' => $menuUuid,
                         'is_sync' => 1,
-                        'local_id' => $item->local_id ?? $item->id,
                         'updated_at' => $now,
                         'store_code' => Auth::user()->store_code,
                         'branch_code' => $transaction->branch_code ?? Auth::user()->store_code,
@@ -123,7 +157,12 @@ class SaveSaleReportController extends Controller
             }
         });
 
-        return redirect()->route('submit-salesreport.index')->with('message', 'Sales report submitted successfully.');
+        $message = 'Sales report submitted successfully.';
+        if ($voidedReportNumber) {
+            $message .= ' Previous report ' . $voidedReportNumber . ' for the same date was voided.';
+        }
+
+        return redirect()->route('submit-salesreport.index')->with('message', $message);
     }
 
     private function summary($startDate, $endDate): array
@@ -158,7 +197,7 @@ class SaveSaleReportController extends Controller
             if ($status === 'PAID') {
                 $summary['completed']++;
                 $summary['paid_sales'] += $amount;
-                $summary['total_collections'] += $amount;
+                $summary['total_collections'] += 0.00; // Assuming collections are not tracked in this context
             } else {
                 $summary['ar']++;
                 $summary['ar_unpaid'] += $amount;
@@ -185,5 +224,21 @@ class SaveSaleReportController extends Controller
         unset($data['id']);
 
         return $data;
+    }
+
+    private function existingReport($startDate, $endDate)
+    {
+        if (!Schema::hasTable('sales_report_transaction')) {
+            return null;
+        }
+
+        return DB::table('sales_report_transaction')
+            ->where('store_code', Auth::user()->store_code)
+            ->where('is_deleted', 0)
+            ->whereDate('start_date', $startDate->toDateString())
+            ->whereDate('end_date', $endDate->toDateString())
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->first(['id', 'trans_number']);
     }
 }

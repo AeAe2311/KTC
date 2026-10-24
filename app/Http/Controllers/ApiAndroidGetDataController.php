@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Mail;    
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 
@@ -257,7 +258,7 @@ public function getData_menu(Request $request)
                             
                             $uuid = Str::uuid()->toString();
                             $ordered_id = $ordered->id;
-                            $ordered_uuid = $ordered->is_uuid;
+                            $ordered_uuid = $ordered->is_uuid;   // harold 9-5 
                             $trans_number = $get_Trans->number;
                             $trans_id = $get_Trans->local_id;
                             $type = 'DELIVERY NOTE';
@@ -353,6 +354,8 @@ public function getData_menu(Request $request)
                                     ->where('id', $po_id)
                                     ->update(['remaining_stocks' => $new_po_remaining_stocks]);
                                 
+
+                                $po_total = $deducted_quantity *  $po_price;  // harold 10 - 23
                                 DB::table('ordered_cogs')
                                     ->insert([
                                         'tran_local_id' => $ordered->tran_id,
@@ -362,6 +365,7 @@ public function getData_menu(Request $request)
                                         'si_number' => $si_number,
                                         'quantity' => $deducted_quantity,
                                         'po_price' => $po_price,
+                                        'po_total' => $po_total,  // harold 10 - 23
                                         'status' => 'SALES',
                                         'store_code' => $store_code,
                                         'branch_code' => $branch_code,
@@ -429,7 +433,7 @@ public function getData_menu(Request $request)
                         // ->where('branch_code', $branch_code)
                         ->where('is_return', 0)
                         ->get();                    
-                                    
+                Log::info($check_void);           
                  if ($check_void->isNotEmpty() ) {
                      foreach ($check_void as $void) {
                                 //   dd($void);
@@ -508,7 +512,7 @@ public function getData_menu(Request $request)
                                         'updated_at' => now(),
                                 ]);
 
-                                
+                                 $po_void_total = $oc_void_quantity *  $po_price; // harold 10 - 23
                                 DB::table('ordered_cogs')
                                     ->insert([
                                         'tran_local_id' => $trans_id,
@@ -518,12 +522,14 @@ public function getData_menu(Request $request)
                                         'si_number' => $si_number,
                                         'quantity' => $oc_void_quantity,
                                         'po_price' => $po_price,
+                                        'po_total' => $po_void_total, // harold 10 - 23
                                         'status' => 'VOID',
                                         'store_code' => $store_code,
                                         'branch_code' => $branch_code,
                                         ]);
-
+                                
                             }
+                            Log::info('Sucess VOID save'); 
                         }
                                          
                         // harold 9-5 cogs VOID end
@@ -585,7 +591,7 @@ public function getData_menu(Request $request)
                             
                      }
                  }
-                 
+                
             // Return unsynced menus
                 return DB::table('menus')
                         // ->where('is_sync', '!=', 1)

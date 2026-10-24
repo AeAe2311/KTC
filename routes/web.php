@@ -614,7 +614,8 @@ Route::middleware("role:1,2,3,4,5,6,8,9")->group(function(){
     // MENU
     Route::get('/menu', [MenuController::class, 'index'])->name('menu.index');
     Route::get('/menu/add', [MenuController::class, 'add'])->name('menu.add');
-    Route::post('/menus/generate-brand-code', [MenuController::class, 'genBrandCode'])->name('menus.generateBrandCode'); //ken 250623001 added new route 7-29-2026
+    Route::post('/menus/generate-brand-code', [MenuController::class, 'genBrandCode'])->name('menus.generateBrandCode');
+    Route::post('/menus/generate-item-code', [MenuController::class, 'genItemCode'])->name('menus.generateItemCode');
     Route::get('/menu/edit/{slug}', [MenuController::class, 'edit']);
     //start ken added route for import, export, dowload template 12-13-2025
     Route::get('/menu/export/{branch?}', [MenuController::class, 'exportMenusCSV'])->name('menu.export');
@@ -923,7 +924,7 @@ Route::middleware('role:1,5,6,2,7,8,9,3')->group(function(){
     // TRANSACTIONS updated ken 7-3-26
     Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
     Route::post('/transactions/view', [TransactionController::class, 'view'])->name('transactions.view');
-    Route::post('/transactions/search-by-number', [TransactionController::class, 'searchByNumber'])->name('transactions.searchByNumber'); // LINE 884: added by ken for search feature of trans 9-30-2026
+    Route::post('/transactions/search-by-number', [TransactionController::class, 'searchByNumber'])->name('transactions.searchByNumber'); // LINE 927: added by ken for search feature of trans 9-30-2026
     Route::get('/transactions/{slug}/edit', [TransactionController::class, 'edit'])->name('transactions.edit');
     Route::post('transactions/update-payments', [TransactionController::class, 'updatePayments'])->name('transactions.updatePayments');    
     Route::post('/transactions/update', [TransactionController::class, 'update'])->name('transactions.update');// ken added update route  7/22/2026

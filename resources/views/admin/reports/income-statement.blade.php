@@ -48,6 +48,10 @@
         .expense-modal-scroll thead th.sticky-left-cell {
             z-index: 7;
         }
+        /* 20260528001 JET START LINES 50 - 54 */
+        .expense-modal-scroll tbody.breakdown-group:hover > tr {
+            background-color: #eff6ff;
+        } /* 20260528001 JET START LINES 50 - 54 */
     </style>
 
     @section('page_title', 'INCOME STATEMENT')
@@ -77,12 +81,12 @@
                             </div>
                         </div>
 
-                        {{-- Branch (Admin only) --}}
+                        {{-- Branch (Admin only; every role when the data comes from the selected company's API) --}}
                         @auth
-                            @if(auth()->user()->role == 1)
+                            @if(auth()->user()->role == 1 || ($storePickerForAllRoles ?? false))
                                 <div class="flex-1">
                                     <label for="branch" class="block text-sm font-medium text-gray-900 mb-1">
-                                        Branch <span class="text-red-500">*</span>
+                                        {{ ($storePickerForAllRoles ?? false) ? 'Store' : 'Branch' }} <span class="text-red-500">*</span>
                                     </label>
                                     <select id="branch" name="branch"
                                         class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
@@ -631,11 +635,29 @@
             // =====================================================
             // Generic breakdown modal (Sales, Net / COGS)
             // =====================================================
-            function buildGenericBreakdownHtml(breakdownByMonth) {
+            // keepOrder: list rows in the order the server sent them (COGS: Beginning → Purchases → Ending)
+            // 20260528001 JET START LINES 639 - 660
+            function buildGenericBreakdownHtml(breakdownByMonth, keepOrder) {
                 var monthKeys = Object.keys(months);
+
+                // Rows may carry `lines` (a P.O.'s items). They get a Details + Amount cell each,
+                // while the P.O. cell and its month/Total cells span all of them.
+                var linesMap = {};
+                monthKeys.forEach(function (mKey) {
+                    (breakdownByMonth[mKey] || []).forEach(function (row) {
+                        if (row.lines && row.lines.length) { linesMap[row.item || 'Unnamed Item'] = row.lines; }
+                    });
+                });
+                var showDetails = Object.keys(linesMap).length > 0;
+                var detailCellClass = 'px-4 py-3 text-sm text-gray-800 border border-black';
+                var lineAmountClass = 'px-4 py-3 text-sm text-right text-gray-900 border border-black whitespace-nowrap';
 
                 var headerHtml = '<tr class="bg-gray-200">';
                 headerHtml += '<th class="sticky-left-cell px-4 py-3 text-left text-xs font-semibold text-gray-700 border border-black bg-gray-200" style="min-width: 320px; max-width: 480px;">Item / Description</th>';
+                if (showDetails) {
+                    headerHtml += '<th class="px-4 py-3 text-left text-xs font-semibold text-gray-700 border border-black bg-gray-200" style="min-width: 220px;">Details</th>';
+                    headerHtml += '<th class="px-4 py-3 text-right text-xs font-semibold text-gray-700 border border-black bg-gray-200" style="min-width: 140px;">Amount</th>';
+                } // 20260528001 JET END
                 monthKeys.forEach(function (mKey) {
                     headerHtml += '<th class="px-4 py-3 text-right text-xs font-semibold text-gray-700 border border-black bg-gray-200" style="min-width: 140px;">' + months[mKey] + '</th>';
                 });
@@ -655,24 +677,36 @@
                     });
                 });
 
-                var itemNames = Object.keys(itemMap).sort(function (a, b) {
+                // 20260528001 JET START LINES 680 - 685
+                var itemNames = keepOrder ? Object.keys(itemMap) : Object.keys(itemMap).sort(function (a, b) {
                     var totalA = 0, totalB = 0;
                     monthKeys.forEach(function (k) { totalA += itemMap[a][k]; totalB += itemMap[b][k]; });
                     return totalB - totalA;
-                });
+                }); // 20260528001 JET END
 
                 var bodyHtml = '';
                 var grandTotal = 0;
                 var monthlyTotals = {};
                 monthKeys.forEach(function (mKey) { monthlyTotals[mKey] = 0; });
 
+                // 20260528001 JET START LINES 692 - 750
                 if (itemNames.length === 0) {
-                    bodyHtml = '<tr><td colspan="' + (monthKeys.length + 2) + '" class="px-4 py-6 text-center text-gray-500 border border-black">No breakdown data available.</td></tr>';
+                    bodyHtml = '<tbody><tr><td colspan="' + (monthKeys.length + 2 + (showDetails ? 2 : 0)) + '" class="px-4 py-6 text-center text-gray-500 border border-black">No breakdown data available.</td></tr></tbody>';
                 } else {
                     itemNames.forEach(function (name, idx) {
                         var rowClass = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                        var lines = linesMap[name] || [];
+                        var span = Math.max(lines.length, 1);
+                        var rowspan = span > 1 ? ' rowspan="' + span + '"' : '';
+
+                        // One <tbody> per item, so hovering highlights all of a P.O.'s rows together
+                        bodyHtml += '<tbody class="breakdown-group">';
                         bodyHtml += '<tr class="' + rowClass + ' hover:bg-blue-50 transition-colors">';
-                        bodyHtml += '<td class="sticky-left-cell px-4 py-3 text-sm text-gray-800 border border-black ' + rowClass + '" style="min-width: 320px; max-width: 480px; word-break: break-word; white-space: normal; line-height: 1.5;">' + escapeHtml(name) + '</td>';
+                        bodyHtml += '<td' + rowspan + ' class="sticky-left-cell px-4 py-3 text-sm text-gray-800 border border-black ' + rowClass + '" style="min-width: 320px; max-width: 480px; word-break: break-word; white-space: normal; line-height: 1.5;">' + escapeHtml(name) + '</td>';
+                        if (showDetails) {
+                            bodyHtml += '<td class="' + detailCellClass + '">' + (lines[0] ? escapeHtml(lines[0].label) : '') + '</td>';
+                            bodyHtml += '<td class="' + lineAmountClass + '">' + (lines[0] ? '₱ ' + formatNumber(parseFloat(lines[0].amount || 0)) : '') + '</td>';
+                        }
 
                         var itemTotal = 0;
                         monthKeys.forEach(function (mKey) {
@@ -680,28 +714,40 @@
                             itemTotal += amount;
                             monthlyTotals[mKey] += amount;
                             var amountClass = amount > 0 ? 'text-gray-900 font-medium' : 'text-gray-400';
-                            bodyHtml += '<td class="px-4 py-3 text-sm text-right border border-black whitespace-nowrap ' + amountClass + '">₱ ' + formatNumber(amount) + '</td>';
+                            bodyHtml += '<td' + rowspan + ' class="px-4 py-3 text-sm text-right border border-black whitespace-nowrap ' + amountClass + '">₱ ' + formatNumber(amount) + '</td>';
                         });
 
                         grandTotal += itemTotal;
-                        bodyHtml += '<td class="px-4 py-3 text-sm text-right font-semibold text-gray-900 border border-black bg-yellow-50 whitespace-nowrap">₱ ' + formatNumber(itemTotal) + '</td>';
+                        bodyHtml += '<td' + rowspan + ' class="px-4 py-3 text-sm text-right font-semibold text-gray-900 border border-black bg-yellow-50 whitespace-nowrap">₱ ' + formatNumber(itemTotal) + '</td>';
                         bodyHtml += '</tr>';
+
+                        // The P.O.'s other items: only their Details + Amount cells (the rest is spanned).
+                        for (var i = 1; i < lines.length; i++) {
+                            bodyHtml += '<tr class="' + rowClass + ' hover:bg-blue-50 transition-colors">';
+                            bodyHtml += '<td class="' + detailCellClass + '">' + escapeHtml(lines[i].label) + '</td>';
+                            bodyHtml += '<td class="' + lineAmountClass + '">₱ ' + formatNumber(parseFloat(lines[i].amount || 0)) + '</td>';
+                            bodyHtml += '</tr>';
+                        }
+                        bodyHtml += '</tbody>';
                     });
 
-                    bodyHtml += '<tr class="bg-gray-800 text-white font-bold">';
+                    bodyHtml += '<tbody><tr class="bg-gray-800 text-white font-bold">';
                     bodyHtml += '<td class="sticky-left-cell px-4 py-3 text-sm border border-black bg-gray-800">TOTAL</td>';
+                    if (showDetails) {
+                        bodyHtml += '<td colspan="2" class="px-4 py-3 text-sm border border-black bg-gray-800"></td>';
+                    }
                     monthKeys.forEach(function (mKey) {
                         bodyHtml += '<td class="px-4 py-3 text-sm text-right border border-black whitespace-nowrap bg-gray-800">₱ ' + formatNumber(monthlyTotals[mKey]) + '</td>';
                     });
                     bodyHtml += '<td class="px-4 py-3 text-sm text-right border border-black bg-yellow-400 text-gray-900 whitespace-nowrap">₱ ' + formatNumber(grandTotal) + '</td>';
-                    bodyHtml += '</tr>';
-                }
+                    bodyHtml += '</tr></tbody>';
+                } 
 
                 return '<div class="expense-modal-scroll rounded border border-black">' +
                     '<table class="min-w-full border-collapse text-sm">' +
                     '<thead>' + headerHtml + '</thead>' +
-                    '<tbody>' + bodyHtml + '</tbody>' +
-                    '</table></div>';
+                    bodyHtml +
+                    '</table></div>'; // 20260528001 JET END
             }
 
             // =====================================================
@@ -801,7 +847,7 @@
                     modalContent.innerHTML =
                         '<div class="flex flex-col min-h-0 flex-1">' +
                             summaryHtml +
-                            '<div class="flex-1 min-h-0">' + buildGenericBreakdownHtml(breakdownByMonth) + '</div>' +
+                            '<div class="flex-1 min-h-0">' + buildGenericBreakdownHtml(breakdownByMonth, type === 'cogs') + '</div>' + //20260528001 JET ADD LINE 850 FROM '<div class="flex-1 min-h-0">' + buildGenericBreakdownHtml(breakdownByMonth) + '</div>' +
                         '</div>';
 
                     openModal();

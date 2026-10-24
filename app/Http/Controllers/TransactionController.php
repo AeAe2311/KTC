@@ -821,16 +821,16 @@ public function update(Request $request)
     public function generate(Request $request){
         // Use PRG: redirect to index (GET) with filter params to avoid form resubmission warnings
         $selectedBranch = $request->branch ?? 'all';
-        $selectedClient = $request->client ?? 'all';
-         $selectedStatus = $request->status ?? 'all';   // LINE 823: NEw filter added by ken 9-30-2026
+        $selectedClient = $request->client ?? 'all';   // LINE 824: NEw filter added by ken 9-30-2026
+        $selectedStatus = $request->status ?? 'all';   // LINE 825: NEw filter added by ken 9-30-2026
         $page = $request->page ?? 1; // Preserve page number
 
         return redirect()->route('transactions.index', [
             'startDate' => $request->startDate ?? date('m/d/Y'),
             'endDate' => $request->endDate ?? date('m/d/Y'),
             'branch' => $selectedBranch,
-            'client' => $selectedClient,
-            'status' => $selectedStatus,   // LINE 831: NEw filter added by ken 9-30-2026
+            'client' => $selectedClient,   // LINE 832: NEw filter added by ken 9-30-2026
+            'status' => $selectedStatus,   // LINE 833: NEw filter added by ken 9-30-2026
             'page' => $page,
         ]);
 

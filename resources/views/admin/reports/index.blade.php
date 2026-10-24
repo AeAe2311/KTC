@@ -35,7 +35,7 @@
                                 <option value="expenses">Expenses</option>
                                 <!--<option value="both">Sales & Expenses</option>-->
                                 <!--<option value="inventory">Raw Materials</option>-->
-                                <!--<option value="menu">Menu</option>-->
+                                <option value="menu">Menu</option> <!--ken enabled New OPTION FOR MENU RANKING REPORTS 10-23-2026-->
                                 <!--<option value="invmenu">Raw Materials & Menu</option>-->
                                 <!--<option value="waste">Waste</option>-->
                             </select>

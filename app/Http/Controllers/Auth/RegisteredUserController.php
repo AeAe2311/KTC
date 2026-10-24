@@ -78,7 +78,7 @@ class RegisteredUserController extends Controller
         ]);
 
         DB::table('service_charge')->insert([
-            'percent' => '10',
+            'percent' => '0',  // LINE 81: UPDATE BY KEN CHANGE TO 0 AS 2307 DEFAULT VALUE 10-23-2026
             'user_id' => $user->id
         ]);
         DB::table('servers')->insert([

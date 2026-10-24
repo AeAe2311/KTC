@@ -2504,9 +2504,11 @@ private static function generateSalesAndExpensesChart($data, $report)
                     continue;
                 }
                 
-                $labels[] = substr($item->name ?? 'Unknown', 0, 15) . (strlen($item->name ?? '') > 15 ? '...' : '');
+                $brand = trim($item->brand_name ?? '');
+                $menuLabel = ($brand !== '' ? $brand . ' - ' : '') . ($item->name ?? 'Unknown');
+                $labels[] = substr($menuLabel, 0, 15) . (strlen($menuLabel) > 15 ? '...' : '');
                 $quantityData[] = $item->quantity ?? 0;
-                $revenueData[] = ($item->quantity ?? 0) * ($item->price ?? 0);
+                $revenueData[] = ($item->total ?? 0);
             }
             
             if (empty($labels)) {
@@ -2519,17 +2521,19 @@ private static function generateSalesAndExpensesChart($data, $report)
                 'labels' => $labels,
                 'datasets' => [
                     [
-                        'label' => 'Quantity Sold',
+                        'label' => 'Quantity Sold: ',
                         'data' => $quantityData,
-                        'borderColor' => 'rgb(75, 192, 192)',
-                        'backgroundColor' => 'rgba(75, 192, 192, 0.7)',
+                        'yAxisID' => 'y1',
+                        'borderColor' => 'rgb(235, 68, 56)',
+                        'backgroundColor' => 'rgba(184, 18, 6, 0.7)',
                         'borderWidth' => 1,
                     ],
                     [
-                        'label' => 'Revenue (₱)',
+                        'label' => 'Revenue: ₱',
                         'data' => $revenueData,
-                        'borderColor' => 'rgb(255, 99, 132)',
-                        'backgroundColor' => 'rgba(255, 99, 132, 0.7)',
+                        'yAxisID' => 'y',
+                        'borderColor' => 'rgb(82, 211, 7)',
+                        'backgroundColor' => 'rgba(52, 173, 4, 0.7)',
                         'borderWidth' => 1,
                     ]
                 ]

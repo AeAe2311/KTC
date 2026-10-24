@@ -625,9 +625,7 @@
                 <div class="mb-2 w-full">
                     <div class="flex items-center gap-1.5 w-full whitespace-nowrap">
                         @if (auth()->user()->store_code == 'store-012026003-000005')
-                            
                             @if (!$hasBrandCodes)
-                                {{-- GBC Button - Active --}}
                                 <form action="{{ route('menus.generateBrandCode') }}" method="POST" class="flex-shrink-0">
                                     @csrf
                                     <button type="submit"
@@ -637,18 +635,25 @@
                                         GBC
                                     </button>
                                 </form>
+                            @endif
+
+                            @if (!$hasItemCodes)
+                                <form action="{{ route('menus.generateItemCode') }}" method="POST" class="flex-shrink-0">
+                                    @csrf
+                                    <button type="submit"
+                                        class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-2 focus:ring-blue-300
+                                            font-semibold rounded-lg text-xs px-3 py-1.5 whitespace-nowrap"
+                                        onclick="return confirm('Generate item codes for all branches and stores?')">
+                                        Generate Item Codes
+                                    </button>
+                                </form>
                             @else
-                                {{-- GBC Button - Disabled (hidden) --}}
-                                {{-- Commented out to hide completely --}}
-                                {{-- 
                                 <button type="button"
-                                    class="text-white bg-green-600 cursor-default
+                                    class="text-white bg-gray-500 cursor-not-allowed
                                         font-semibold rounded-lg text-xs px-3 py-1.5 whitespace-nowrap"
                                     disabled>
-                                    ✓ GBC Complete
+                                    Item Codes Generated
                                 </button>
-                                --}}
-                                
                             @endif
                         @endif
 

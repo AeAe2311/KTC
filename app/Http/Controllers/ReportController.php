@@ -789,9 +789,9 @@ class ReportController extends Controller {
 
                 // Basic fields
                 $row->display_number = $row->ref;
-                $row->row_amount = (float) ($row->amount ?? 0);
-                $row->ar_display_amount = (float) ($row->ar_balance ?? 0);
-                $row->form2307 = (float) ($row->service_charge ?? 0);
+                $row->row_amount = $row->amount ?? 0; // LINE 792: Start of update to remove float update by ken 10-24-2026
+                $row->ar_display_amount = $row->ar_balance ?? 0; // LINE 793: Start of update to remove float update by ken 10-24-2026
+                $row->form2307 = $row->service_charge ?? 0; // LINE 794: Start of update to remove float update by ken 10-24-2026
                 $row->status = $row->status ?? '';
                 
                 // Determine if this is an AR transaction (unpaid or partially paid)
@@ -890,6 +890,7 @@ class ReportController extends Controller {
                 ->select(
                     'pl.id as payment_id',
                     'pl.tran_number',
+                    'pl.total as total_amount_paid', // LINE 893: added by ken 252306001 10-24-2026
                     'pl.amount as payment_amount',
                     'pl.created_at as payment_date',
                     't.id as transaction_id',
@@ -937,18 +938,19 @@ class ReportController extends Controller {
                 $totalAmount = (float) ($row->amount ?? 0) + (float) ($row->service_charge ?? 0);
                 
                 // Get the AR payment amount
-                $arPaymentAmount = (float) ($row->payment_amount ?? 0);
+                $arPaymentAmount = $row->payment_amount ?? 0; // LINE 941: Start of update to remove float update by ken 10-24-2026
+                $arTotalPaid = $row->total_amount_paid ?? 0; // LINE: 942: added by ken 252306001 10-24-2026
                 
                 // Calculate remaining AR balance (total - AR payment) -- per-row only, will be recalculated after merge
                 $arBalance = max(0, $arPaymentAmount - $arPaymentAmount);
                 $remarks = $row->payment_date ?? '';
                 // Basic fields
                 $row->display_number = $row->ref ?? $row->tran_number;
-                $row->row_amount = $arPaymentAmount;
+                $row->row_amount = $arTotalPaid; // LINE 949: update change to arTotalPaid from arPaymentAmount by ken 252306001 10-24-2026
                 $row->total_amount = $totalAmount; // NEW: keep the transaction total around so merge step can compute the correct combined balance
                 $row->ar_display_amount = 0;
                 $row->paid_amount = $arPaymentAmount;
-                $row->form2307 = (float) ($row->service_charge ?? 0);
+                $row->form2307 = $row->service_charge ?? 0; // LINE 941: Start of update to remove float update by ken 10-24-2026
                 $row->is_ar_transaction = true;
                 $row->status = $remarks;
 
@@ -4195,25 +4197,33 @@ class ReportController extends Controller {
                 $categoryId = $request->category_id;
 
                 $results = DB::table('ordered')
-                    ->select('ordered.menu_uuid', 'menus.name', DB::raw('SUM(ordered.quantity) as quantity'), 'menus.price', DB::raw('SUM(ordered.quantity * menus.price) as total'))
-                    ->join('menus', 'ordered.menu_uuid', '=', 'menus.is_uuid')
+                    ->select('ordered.menu_uuid', 'menus.name', 'brands.name as brand_name', DB::raw('SUM(ordered.quantity) as quantity'), DB::raw('SUM(ordered.amount) as total'))
+                    ->join('menus', function ($join) {
+                        $join->on('ordered.menu_uuid', '=', 'menus.is_uuid')
+                            ->on('ordered.store_code', '=', 'menus.store_code');
+                    })
+                    ->leftJoin('brands', 'menus.brand_id', '=', 'brands.id')
                     ->join('menu_categories', 'menus.category_id', '=', 'menu_categories.id')
                     ->join('transactions', 'ordered.tran_id', '=', 'transactions.local_id')
-                    ->groupBy('ordered.menu_uuid', 'menus.name','menus.price')
-                    ->where('ordered.store_code', $storeCode)
-                    ->where('menus.store_code', $storeCode)
-                    ->where('ordered.created_at', '>=', $startDate)
-                    ->where('ordered.created_at', '<', $endDate)
+                    ->groupBy('ordered.menu_uuid', 'menus.name', 'brands.name')
+                    ->where('transactions.order_status', '!=', 'CANCELLED')
+                    ->where('menus.is_deleted', 0)
+                    ->where('menu_categories.is_deleted', 0)
+                    ->where('transactions.status', 'PAID')
+                    ->where('transactions.created_at', '>=', $startDate)
+                    ->where('transactions.created_at', '<', $endDate)
                     ->when($categoryId, function ($results, $categoryId) {
                         return $results->where('menu_categories.id', $categoryId);
                     });
                 
                 // ADDED: Branch filtering
-                if ($userBranch) {
-                    $results->where('transactions.store_code', $userBranch);
+                if ($userBranch && $userBranch !== 'all') {
+                    $results->where('transactions.store_code', $userBranch)
+                        ->where('ordered.store_code', $userBranch);
                 }
                 
                 $results = $results->orderBy('quantity', 'desc')
+                    ->orderBy('total', 'desc')
                     ->get();
                 
                     
@@ -4653,12 +4663,19 @@ class ReportController extends Controller {
         } else if ($category == 'menu') {
             if ($report == 'rank') {
                 $results = DB::table('ordered')
-                    ->select('ordered.menu_id', 'menus.name', DB::raw('SUM(ordered.quantity) as quantity'))
-                    ->join('menus', 'ordered.menu_id', '=', 'menus.id')
-                    ->groupBy('ordered.menu_id', 'menus.name')
+                    ->select('ordered.menu_id', 'menus.name', 'brands.name as brand_name', DB::raw('SUM(ordered.quantity) as quantity'), DB::raw('SUM(ordered.amount) as total'))
+                    ->join('menus', function ($join) {
+                        $join->on('ordered.menu_id', '=', 'menus.id')
+                            ->on('ordered.store_code', '=', 'menus.store_code');
+                    })
+                    ->leftJoin('brands', 'menus.brand_id', '=', 'brands.id')
+                    ->join('transactions', 'ordered.tran_id', '=', 'transactions.local_id')
+                    ->groupBy('ordered.menu_id', 'menus.name', 'brands.name')
                     ->where('ordered.created_at', '>=', $startDate)
                     ->where('ordered.created_at', '<', $endDate)
+                    ->where('transactions.order_status', '!=', 'CANCELLED')
                     ->orderBy('quantity', 'desc')
+                    ->orderBy('total', 'desc')
                     ->get();
             } else if ($report == 'stock') {
                 $results = Menu::with('category')->orderBy('quantity', 'desc')->get();
@@ -5557,6 +5574,7 @@ class ReportController extends Controller {
         $startDate = date('Y-m-d H:i:s', strtotime($start));
         $endDate = date('Y-m-d H:i:s', strtotime($end));
         $branchs = [];
+        $selectedBranch = request('branch') ?: data_get(session('report_filters'), 'branch');
             
         if (Auth::user()->role == 1) {
             $branchs = DB::table('settings')->orderBy('name', 'asc')->where('is_deleted', 0)->get();
@@ -6045,21 +6063,30 @@ class ReportController extends Controller {
         } elseif ($category == 'menu') {
             if ($report == 'rank') {
                 $results = DB::table('ordered')
-                    ->select('ordered.menu_id', 'menus.name', DB::raw('SUM(ordered.quantity) as quantity'), 'menus.price', DB::raw('SUM(ordered.quantity * menus.price) as total'))
+                    ->select('ordered.menu_id', 'menus.name', 'brands.name as brand_name', DB::raw('SUM(ordered.quantity) as quantity'), DB::raw('SUM(ordered.amount) as total'))
                     ->join('menus', 'ordered.menu_id', '=', 'menus.id')
                     ->join('menu_categories', 'menus.category_id', '=', 'menu_categories.id')
-                    ->groupBy('ordered.menu_id', 'menus.name','menus.price')
-                    ->where('ordered.created_at', '>=', $startDate)
-                    ->where('ordered.created_at', '<', $endDate)
-                    ->orderBy('total' , 'desc')
+                    ->leftJoin('brands', 'menus.brand_id', '=', 'brands.id')
+                    ->join('transactions', 'ordered.tran_id', '=', 'transactions.local_id')
+                    ->groupBy('ordered.menu_id', 'menus.name', 'brands.name')
+                    ->where('transactions.created_at', '>=', $startDate)
+                    ->where('transactions.created_at', '<', $endDate)
+                    ->where('transactions.order_status', '!=', 'CANCELLED')
+                    ->where('transactions.status', '=', 'PAID')
+                    ->when($selectedBranch && $selectedBranch !== 'all', function ($query) use ($selectedBranch) {
+                        return $query
+                            ->where('transactions.store_code', $selectedBranch)
+                            ->where('ordered.store_code', $selectedBranch);
+                    })
+                    ->orderBy('quantity', 'desc')
+                    ->orderBy('total', 'desc')
                     ->get();
                     
                 $results = $results->map(function($item) {
                     return [
                         'Menu Item' => $item->name,
                         'Quantity Sold' => $item->quantity,
-                        'Unit Price' => $item->price,
-                        'Total Revenue' => $item->total,
+                        'Total Amount' => $item->total,
                     ];
                 })->toArray();
                     

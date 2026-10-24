@@ -723,9 +723,11 @@
             return n > 0 ? fmtMoney(n) : '<span class="text-slate-400">0.00</span>';
         }
 
-        function computeRunningRows(rows, openingBalance) {
+        function computeRunningRows(rows, openingBalance, debitMinusCredit) {
             return (rows || []).map(function (r) {
-                const net = (Number(r.credit) || 0) - (Number(r.debit) || 0);
+                const net = debitMinusCredit
+                    ? (Number(r.debit) || 0) - (Number(r.credit) || 0)
+                    : (Number(r.credit) || 0) - (Number(r.debit) || 0);
                 return Object.assign({}, r, { balance: net });
             });
         }
@@ -733,6 +735,7 @@
         function buildItemRow(r, rowBalance) {
             const rawDate = String(r.date || '');
             const rawTime = String(r.time || '');
+            const lines = Array.isArray(r.lines) ? r.lines : [];
 
             let dateLine = rawDate;
             const m = rawDate.match(/^([A-Za-z]+)\s+(\d{1,2}),\s*(\d{4})$/);
@@ -748,6 +751,30 @@
             }
 
             const timeLine = rawTime.replace(/\b(AM|PM)\b/gi, s => s.toLowerCase());
+            const remarks = escapeHtml(r.remarks);
+            const detailHtml = lines.length
+                ? `
+                    <details class="mt-1 text-[10px] text-slate-500">
+                        <summary class="cursor-pointer select-none text-emerald-700 hover:text-emerald-900">
+                            ${lines.length} item detail${lines.length === 1 ? '' : 's'}
+                        </summary>
+                        <div class="mt-1 space-y-0.5 border-l-2 border-emerald-200 pl-2">
+                            ${lines.map(line => {
+                                const label = line.item || line.label || 'Unnamed Item';
+                                const amount = Number(line.amount) || 0;
+                                return `
+                                    <div class="flex items-center justify-between gap-3">
+                                        <span>${escapeHtml(label)}</span>
+                                        <span class="${amount < 0 ? 'text-rose-600' : 'text-slate-700'} whitespace-nowrap">
+                                            ${amount < 0 ? '-' : ''}${fmtMoney(amount)}
+                                        </span>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </details>
+                `
+                : '';
 
             return `
                 <tr class="border-b border-slate-100 hover:bg-slate-50/70">
@@ -756,7 +783,7 @@
                         <div class="text-slate-400 text-[10px]">${escapeHtml(timeLine)}</div>
                     </td>
                     <td class="px-3 py-2 text-slate-700 font-mono text-[11px]">${escapeHtml(r.reference_no)}</td>
-                    <td class="px-3 py-2 text-slate-700">${escapeHtml(r.remarks)}</td>
+                    <td class="px-3 py-2 text-slate-700">${remarks}${detailHtml}</td>
                     <td class="px-3 py-2 text-right text-rose-600">${fmtSide(r.debit)}</td>
                     <td class="px-3 py-2 text-right text-emerald-700">${fmtSide(r.credit)}</td>
                     <td class="px-3 py-2 text-right">${fmtBalance(rowBalance)}</td>
@@ -775,15 +802,16 @@
         function buildCombinedView(data, accountName) {
             const beginning = data.beginning || { rows: [], total_debit: 0, total_credit: 0, label: '' };
             const period    = data.period    || { rows: [], total_debit: 0, total_credit: 0, label: '' };
+            const debitMinusCredit = data.balance_mode === 'debit_minus_credit';
 
-            const begRows = computeRunningRows(beginning.rows || [], 0);
-            const perRows = computeRunningRows(period.rows || [], 0);
+            const begRows = computeRunningRows(beginning.rows || [], 0, debitMinusCredit);
+            const perRows = computeRunningRows(period.rows || [], 0, debitMinusCredit);
 
-            const begBalEnd = begRows.reduce(
-                (acc, r) => acc + (Number(r.credit) || 0) - (Number(r.debit) || 0), 0
+            const begBalEnd = debitMinusCredit ? 0 : begRows.reduce(
+                (acc, r) => acc + (Number(r.balance) || 0), 0
             );
             const endBal = begBalEnd + perRows.reduce(
-                (acc, r) => acc + (Number(r.credit) || 0) - (Number(r.debit) || 0), 0
+                (acc, r) => acc + (Number(r.balance) || 0), 0
             );
 
             if (begRows.length === 0 && perRows.length === 0) {
@@ -864,15 +892,16 @@
         function buildSideBySideView(data, accountName) {
             const beginning = data.beginning || { rows: [], total_debit: 0, total_credit: 0, label: '' };
             const period    = data.period    || { rows: [], total_debit: 0, total_credit: 0, label: '' };
+            const debitMinusCredit = data.balance_mode === 'debit_minus_credit';
 
-            const begRows = computeRunningRows(beginning.rows || [], 0);
-            const perRows = computeRunningRows(period.rows || [], 0);
+            const begRows = computeRunningRows(beginning.rows || [], 0, debitMinusCredit);
+            const perRows = computeRunningRows(period.rows || [], 0, debitMinusCredit);
 
-            const begBalEnd = begRows.reduce(
-                (acc, r) => acc + (Number(r.credit) || 0) - (Number(r.debit) || 0), 0
+            const begBalEnd = debitMinusCredit ? 0 : begRows.reduce(
+                (acc, r) => acc + (Number(r.balance) || 0), 0
             );
             const endBal = begBalEnd + perRows.reduce(
-                (acc, r) => acc + (Number(r.credit) || 0) - (Number(r.debit) || 0), 0
+                (acc, r) => acc + (Number(r.balance) || 0), 0
             );
 
             if (begRows.length === 0 && perRows.length === 0) {

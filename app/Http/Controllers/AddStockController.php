@@ -452,7 +452,7 @@ class AddStockController extends Controller
                     'reference_number' => $refNumber,
                     'sales_invoice' => $salesInvoice,
                     'store_code' => $pendingOrder->store_code,
-                    'remaining_stocks' => $newQuantity,
+                    'remaining_stocks' => $item['quantity'], // LINE 455: Save the remaining stocks after approval
                     'created_at' => now(),
                     'updated_at' => now()
                 ]);

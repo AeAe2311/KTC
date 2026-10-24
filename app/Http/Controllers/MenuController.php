@@ -207,14 +207,15 @@ class MenuController extends Controller {
         
         // Check for required data and prepare toast notifications
         $toastMessages = $this->checkRequiredData();
-        // Check if any brand codes exist for the current store
-        $hasBrandCodes = \App\Models\Menu::where('store_code', auth()->user()->store_code)
-                                        ->whereNotNull('brand_code')
-                                        ->where('brand_code', '!=', '')
-                                        ->exists();        
+        $hasBrandCodes = Menu::where('store_code', auth()->user()->store_code)
+            ->whereNotNull('brand_code')
+            ->where('brand_code', '!=', '')
+            ->exists();
+        $hasItemCodes = $this->itemCodesGenerated();
         return view('user.cook.menu-preparation', compact(
             'groupedMenus',
             'hasBrandCodes',
+            'hasItemCodes',
             'menuCount',
             'page',
             'search',
@@ -358,14 +359,16 @@ class MenuController extends Controller {
             ->where('is_deleted', 0)
             ->orderBy('name', 'asc')
             ->get();
-        $hasBrandCodes = \App\Models\Menu::where('store_code', auth()->user()->store_code)
-                                        ->whereNotNull('brand_code')
-                                        ->where('brand_code', '!=', '')
-                                        ->exists();         
+        $hasBrandCodes = Menu::where('store_code', auth()->user()->store_code)
+            ->whereNotNull('brand_code')
+            ->where('brand_code', '!=', '')
+            ->exists();
+        $hasItemCodes = $this->itemCodesGenerated();
         return view('user.cook.menu-preparation', compact(
             'groupedMenus',
             'menuCount',
             'hasBrandCodes',
+            'hasItemCodes',
             'page',
             'search',
             'items',
@@ -496,10 +499,11 @@ class MenuController extends Controller {
 
         $menuCount = count($groupedMenus);
         $category = $categoryFilter;
-        $hasBrandCodes = \App\Models\Menu::where('store_code', auth()->user()->store_code)
-                                        ->whereNotNull('brand_code')
-                                        ->where('brand_code', '!=', '')
-                                        ->exists();         
+        $hasBrandCodes = Menu::where('store_code', auth()->user()->store_code)
+            ->whereNotNull('brand_code')
+            ->where('brand_code', '!=', '')
+            ->exists();
+        $hasItemCodes = $this->itemCodesGenerated();
         // FIX: Add 'groupedMenus', 'search', and 'branchFilter' to compact()
         return view('user.cook.menu-preparation', compact(
             'groupedMenus',  // Add this line
@@ -507,6 +511,7 @@ class MenuController extends Controller {
             'page', 
             'search', 
             'hasBrandCodes',
+            'hasItemCodes',
             'items',
             'categories',
             'category',
@@ -631,6 +636,11 @@ class MenuController extends Controller {
             ->get();
 
         $menuCount = count($groupedMenus);
+        $hasBrandCodes = Menu::where('store_code', auth()->user()->store_code)
+            ->whereNotNull('brand_code')
+            ->where('brand_code', '!=', '')
+            ->exists();
+        $hasItemCodes = $this->itemCodesGenerated();
         
         // FIX: Add 'groupedMenus', 'search', and 'branchFilter' to compact()
         return view('user.cook.menu-preparation', compact(
@@ -638,6 +648,8 @@ class MenuController extends Controller {
             'menuCount', 
             'page', 
             'category', 
+            'hasBrandCodes',
+            'hasItemCodes',
             'items',
             'categories',
             'search',
@@ -1756,16 +1768,22 @@ class MenuController extends Controller {
         if (!$menu) {
             return response()->json(['success' => false, 'message' => 'Menu item not found'], 404);
         }
-
-        // Update category for all menu items with the same name in the same store (across branches)
-        DB::table('menus')
-            ->where('name', $menu->name)
-            ->where('store_code', Auth::user()->store_code)
-            ->update([
-                'category_id' => $categoryId,
-                'updated_at' => now(),
-            ]);
-
+        // LINE 1771: Start of update centralized edit by Ken 10-21-2026
+        $categoryUpdateQuery = DB::table('menus')
+            ->where('store_code', Auth::user()->store_code);
+        if ($menu->item_code !== null && $menu->item_code !== '') {
+            $categoryUpdateQuery->where('item_code', $menu->item_code);
+        } else {
+            $categoryUpdateQuery->where('name', $menu->name)
+                ->where(function ($q) {
+                    $q->whereNull('item_code')->orWhere('item_code', '');
+                });
+        }
+        $categoryUpdateQuery->update([
+            'category_id' => $categoryId,
+            'updated_at' => now(),
+        ]);
+        // LINE 1786: end of update centralized edit by ken 10-21-2026
         $categoryName = DB::table('menu_categories')->where('id', $categoryId)->value('name');
 
         return response()->json(['success' => true, 'category_name' => $categoryName]);
@@ -3477,19 +3495,9 @@ class MenuController extends Controller {
     }
     // End of ken added Export, Import and downloadtemplate csv menus to CSV function  12-13-2025
 
+    
 
-    // ken added new method para sa Generate ng brand_code 7-29-30
-    public function getBrands(request $request)
-    {
-        $categoryId = $request->input('categoryId');
 
-        $brands = DB::table('brands')
-            ->where('store_code', Auth::user()->store_code)
-            //->where('category_id', $categoryId)
-            ->get();
-
-        return response()->json($brands);
-    }
     public function genBrandCode()
     {
         $counter = 100001;
@@ -3510,20 +3518,108 @@ class MenuController extends Controller {
             ->get();
 
         foreach ($groups as $group) {
-
             Menu::join('menu_categories', 'menus.category_id', '=', 'menu_categories.id')
                 ->join('brands', 'menus.brand_id', '=', 'brands.id')
                 ->whereRaw('LOWER(TRIM(menus.name)) = ?', [$group->menu_name])
                 ->whereRaw('LOWER(TRIM(menu_categories.name)) = ?', [$group->category_name])
                 ->whereRaw('LOWER(TRIM(brands.name)) = ?', [$group->brand_name])
-                ->update([
-                    'menus.brand_code' => (string) $counter
-                ]);
+                ->update(['menus.brand_code' => (string) $counter]);
 
             $counter++;
         }
 
         return back()->with('success', 'Brand codes generated successfully.');
     }
-    // end of ken added new method para sa Generate ng brand_code 7-29-30
+
+    public function getBrands(request $request)
+    {
+        $categoryId = $request->input('categoryId');
+
+        $brands = DB::table('brands')
+            ->where('store_code', Auth::user()->store_code)
+            //->where('category_id', $categoryId)
+            ->get();
+
+        return response()->json($brands);
+    }
+
+    private function itemCodesGenerated(): bool
+    {
+        $activeMenus = Menu::where('is_deleted', 0);
+
+        return $activeMenus->exists()
+            && !Menu::where('is_deleted', 0)
+                ->where(function ($query) {
+                    $query->whereNull('item_code')
+                        ->orWhere('item_code', '');
+                })
+                ->exists();
+    }
+
+    private function normalizeItemName(?string $name): string
+    {
+        $normalized = Str::lower(trim((string) $name));
+        $normalized = preg_replace('/[^\pL\pN]+/u', ' ', $normalized);
+        $normalized = preg_replace('/\s+/u', ' ', trim($normalized));
+
+        $words = array_map(function (string $word): string {
+            if (strlen($word) > 3 && preg_match('/(ss|us|is|ws)$/', $word) !== 1) {
+                return substr($word, 0, -1);
+            }
+
+            return $word;
+        }, explode(' ', $normalized));
+
+        return implode(' ', $words);
+    }
+
+    private function makeItemCode(string $normalizedName, array &$usedCodes): string
+    {
+        $letters = strtoupper((string) preg_replace('/[^A-Z]/', '', strtoupper($normalizedName)));
+        $prefix = str_pad(substr($letters, 0, 4), 4, 'X');
+        $attempt = 0;
+
+        do {
+            $hashInput = $normalizedName . ':' . $attempt;
+            $digits = (int) (hexdec(substr(hash('sha256', $hashInput), 0, 8)) % 10000);
+            $code = $prefix . str_pad((string) $digits, 4, '0', STR_PAD_LEFT);
+            $attempt++;
+        } while (isset($usedCodes[$code]));
+
+        $usedCodes[$code] = true;
+
+        return $code;
+    }
+
+    public function genItemCode()
+    {
+        try {
+            DB::transaction(function () {
+                $menus = Menu::where('is_deleted', 0)
+                    ->select('id', 'name')
+                    ->orderBy('id')
+                    ->get();
+                $usedCodes = [];
+
+                foreach ($menus->groupBy(function ($menu) {
+                    return $this->normalizeItemName($menu->name);
+                }) as $group) {
+                    $code = $this->makeItemCode(
+                        $this->normalizeItemName($group->first()->name),
+                        $usedCodes
+                    );
+
+                    Menu::whereIn('id', $group->pluck('id'))->update([
+                        'item_code' => $code,
+                    ]);
+                }
+            });
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return back()->with('error', 'Item codes could not be generated. Please try again.');
+        }
+
+        return back()->with('success', 'Item codes generated successfully for all branches and stores.');
+    }    
 }

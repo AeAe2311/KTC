@@ -149,7 +149,13 @@
                                         Menu
                                     </th>
                                     <th class="px-6 text-center">
-                                        Total Served
+                                        Brand
+                                    </th>
+                                    <th class="px-6 text-center">
+                                        Amount
+                                    </th>
+                                    <th class="px-6 text-center">
+                                        Quantity
                                     </th>
                                 @else
                                     <th class="px-6 text-center">
@@ -283,6 +289,12 @@
                                         </th>
                                         <td class="px-6 py-1 text-center whitespace-nowrap">
                                             {{ $result->name }}
+                                        </td>
+                                        <td class="px-6 py-1 text-center whitespace-nowrap">
+                                            {{ $result->brand_name ?? 'N/A' }}
+                                        </td>
+                                        <td class="px-6 py-1 text-center whitespace-nowrap">
+                                            {{ number_format((float) ($result->total ?? 0), 2) }}
                                         </td>
                                         <td class="px-6 py-1 text-center whitespace-nowrap">
                                             {{ round($result->quantity, 0) }}

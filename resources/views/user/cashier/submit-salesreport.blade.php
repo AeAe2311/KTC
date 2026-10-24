@@ -34,6 +34,21 @@
                 <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ $errors->first() }}</div>
             @endif
 
+            @if(session('message'))
+                <div class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{{ session('message') }}</div>
+            @endif
+
+            @if($existingReport)
+                <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    <p class="font-semibold">A sales report already exists for this date.</p>
+                    <p class="mt-1">
+                        Saving this report will void the first saved report
+                        <span class="font-semibold">{{ $existingReport->trans_number }}</span>
+                        and mark it as deleted. The new report will replace it.
+                    </p>
+                </div>
+            @endif
+
             <div class="grid gap-5 lg:grid-cols-3">
                 <article class="overflow-hidden rounded-xl border border-blue-100 bg-white shadow-sm">
                     <div class="border-b border-blue-100 bg-blue-50 px-5 py-4">
@@ -72,7 +87,7 @@
                 </article>
             </div>
 
-            <form method="POST" action="{{ route('submit-salesreport.store') }}" onsubmit="return confirm('Submit this sales report? This action cannot be undone.');" class="mt-6 flex justify-end">
+            <form method="POST" action="{{ route('submit-salesreport.store') }}" onsubmit="return confirm(@js($existingReport ? 'A sales report (' . $existingReport->trans_number . ') already exists for this date. Saving this report will void the first saved report and mark it as deleted. Continue?' : 'Submit this sales report? This action cannot be undone.'));" class="mt-6 flex justify-end">
                 @csrf
                 <input type="hidden" name="start_date" value="{{ $startDate->format('Y-m-d') }}">
                 <input type="hidden" name="end_date" value="{{ $endDate->format('Y-m-d') }}">

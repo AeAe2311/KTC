@@ -914,19 +914,19 @@ class TrialBalanceController extends Controller
                     ]);
                 }
 
-                if (!empty($isField->ending)) {
-                    $rows->push([
-                        'id'           => 'COGS-ENDING',
-                        'date_raw'     => $anchorDate,
-                        'date'         => date('M d, Y', $anchorTs),
-                        'time'         => '—',
-                        'reference_no' => '—',
-                        'remarks'      => 'Less: Ending Inventory',
-                        'user_name'    => '—',
-                        'debit'        => 0.0,
-                        'credit'       => (float) $isField->ending,
-                    ]);
-                }
+                // if (!empty($isField->ending)) {
+                //     $rows->push([
+                //         'id'           => 'COGS-ENDING',
+                //         'date_raw'     => $anchorDate,
+                //         'date'         => date('M d, Y', $anchorTs),
+                //         'time'         => '—',
+                //         'reference_no' => '—',
+                //         'remarks'      => 'Less: Ending Inventory',
+                //         'user_name'    => '—',
+                //         'debit'        => 0.0,
+                //         'credit'       => (float) $isField->ending,
+                //     ]);
+                // }
             }
 
             return $rows->sortBy('date_raw')->values()->map(function ($r) {

@@ -1293,7 +1293,7 @@
                                                     
                                     {{-- Display grouped results --}}
                                     @foreach($groupedResults as $date => $totals)
-                                        {{-- <tr class="border-b hover:bg-gray-50"> // LINE 1282: ken start of remove this code of block 9-10-2026
+                                        <tr class="border-b hover:bg-gray-50">
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
                                                 {{ date('M d, Y', strtotime($date)) }}
                                             </td>
@@ -1387,7 +1387,7 @@
                                                 <a href="{{ url('/report/print/'.$date.'/'.$date.'/'.$category.'/'.$report) }}" target="_blank" class="text-blue-500 hover:underline">Print</a>
                                             </td>
                                             @endif
-                                        </tr> // LINE 1376:ken end of remove this code of block 9-10-2026 --}}
+                                        </tr>
                                         
                                         {{-- Accumulate grand totals --}}
                                         @php

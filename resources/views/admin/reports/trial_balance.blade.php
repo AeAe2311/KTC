@@ -546,6 +546,7 @@
         let lastBreakdownAccountName = '';
         let currentViewMode = 'combined';
 
+
         function openBreakdownModal(accountName) {
             const modal = document.getElementById('breakdownModal');
             const nameEl = document.getElementById('breakdownAccountName');
@@ -553,27 +554,34 @@
             const countEl = document.getElementById('breakdownCount');
 
             nameEl.textContent = accountName || '';
+
             countEl.classList.add('hidden');
             countEl.textContent = '';
 
             bodyEl.innerHTML = `
                 <div class="flex items-center justify-center gap-2 py-10 text-slate-500 text-xs" style="flex:1;">
-                    <svg class="animate-spin w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                    <svg class="animate-spin w-4 h-4 text-emerald-600"
+                        fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10"
+                                stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor"
+                            d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
                     </svg>
                     Loading breakdown...
                 </div>
             `;
 
+            // Show modal immediately
             modal.classList.remove('hidden');
             document.body.style.overflow = 'hidden';
 
-            setTimeout(() => {
+            // Focus the Close button on the next rendering frame
+            requestAnimationFrame(() => {
                 const closeBtn = modal.querySelector('button[aria-label="Close"]');
-                if (closeBtn) closeBtn.focus();
-            }, 30);
+                closeBtn?.focus({ preventScroll: true });
+            });
         }
+
 
         function closeBreakdownModal() {
             const modal = document.getElementById('breakdownModal');

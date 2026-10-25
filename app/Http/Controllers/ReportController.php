@@ -681,31 +681,32 @@ class ReportController extends Controller {
             }
 
             // ===== 2. PAYMENT SUMMARY QUERY =====
-
+            // LINE 684: start of update fix by ken 10-25-26
             $paymentSummaryQuery = DB::table('payment_logs as pl')
-                ->select('pl.tran_number', DB::raw('SUM(pl.amount) as paid_amount'))
+                ->select('pl.tran_id', DB::raw('SUM(pl.amount) as paid_amount'))
                 ->where('pl.store_code', $userBranch)
                 ->where('pl.created_at', '>=', $startDate)
-                ->where('pl.created_at', '<', $endDate);
-
-            // Join with mode_of_payment to get the payment method name
+                ->where('pl.created_at', '<', $endDate)
+                ->where('pl.is_deleted', '!=', 1);   // consistent with AR query
+            
+            /// Join with mode_of_payment to get the payment method name
             if (Schema::hasColumn('payment_logs', 'mop_id') && Schema::hasTable('mode_of_payment')) {
                 $paymentSummaryQuery->leftJoin('mode_of_payment as mop', 'pl.mop_id', '=', 'mop.id')
                     ->addSelect(DB::raw('UPPER(TRIM(COALESCE(mop.name, pl.label, "CASH"))) as mop'))
-                    ->groupBy('pl.tran_number', DB::raw('UPPER(TRIM(COALESCE(mop.name, pl.label, "CASH")))'));
+                    ->groupBy('pl.tran_id', DB::raw('UPPER(TRIM(COALESCE(mop.name, pl.label, "CASH")))'));
             } elseif (Schema::hasColumn('payment_logs', 'mop')) {
                 $paymentSummaryQuery->addSelect(DB::raw('UPPER(TRIM(pl.mop)) as mop'))
-                    ->groupBy('pl.tran_number', DB::raw('UPPER(TRIM(pl.mop))'));
+                    ->groupBy('pl.tran_id', DB::raw('UPPER(TRIM(pl.mop))'));
             } elseif (Schema::hasColumn('payment_logs', 'label')) {
                 $paymentSummaryQuery->addSelect(DB::raw('UPPER(TRIM(COALESCE(pl.label, "CASH"))) as mop'))
-                    ->groupBy('pl.tran_number', DB::raw('UPPER(TRIM(COALESCE(pl.label, "CASH")))'));
+                    ->groupBy('pl.tran_id', DB::raw('UPPER(TRIM(COALESCE(pl.label, "CASH")))'));
             } else {
                 $paymentSummaryQuery->addSelect(DB::raw('"CASH" as mop'))
-                    ->groupBy('pl.tran_number');
+                    ->groupBy('pl.tran_id');
             }
 
-            $paymentSummaryRows = $paymentSummaryQuery->get()->groupBy('tran_number');
-            
+            $paymentSummaryRows = $paymentSummaryQuery->get()->groupBy('tran_id');
+            // LINE 709: end of update fix by ken 10-25-26
 
             // Log payment details for each transaction
             foreach ($paymentSummaryRows as $tranNumber => $payments) {
@@ -718,7 +719,7 @@ class ReportController extends Controller {
 
             $salesQuery = DB::table('transactions as t')
                 ->select(
-                    't.id',
+                    't.id', 't.local_id', // LINE 722: Added local_id for mapping payments by ken 10-25-26
                     't.number as ref',
                     // Try to get customer name from multiple sources
                     DB::raw("
@@ -748,7 +749,7 @@ class ReportController extends Controller {
                 ->leftJoinSub(
                     DB::table('payment_logs as pl')
                         ->select(
-                            'pl.tran_number', 
+                            'pl.tran_id', // LINE 752: update fron tran_number to tran_id by ken 10-25-26
                             DB::raw('SUM(pl.amount) as paid_amount')
                         )
                         // Join with mode_of_payment inside the subquery
@@ -756,10 +757,10 @@ class ReportController extends Controller {
                         ->where('pl.store_code', $userBranch)
                         ->where('pl.created_at', '>=', $startDate)
                         ->where('pl.created_at', '<', $endDate)
-                        ->groupBy('pl.tran_number'),
+                        ->groupBy('pl.tran_id'), // LINE 760: update fron tran_number to tran_id by ken 10-25-26
                     'payment_totals',
                     function ($join) {
-                        $join->on('payment_totals.tran_number', '=', 't.number');
+                        $join->on('payment_totals.tran_id', '=', 't.local_id'); // LINE 763: update fron tran_number to tran_id by ken 10-25-26
                     }
                 )
                 ->selectRaw('COALESCE(payment_totals.paid_amount, 0) as paid_amount')
@@ -800,8 +801,8 @@ class ReportController extends Controller {
                 // Initialize payments array
                 $row->payments = array_fill_keys($dailySRPaymentColumns, 0);
                 
-                // Get payments using the transaction number (ref)
-                $rowPayments = $paymentSummaryRows[$row->ref] ?? collect();
+                // Get payments using the transaction number (local_id)
+                $rowPayments = $paymentSummaryRows[$row->local_id] ?? collect(); // LINE 805: update fron ref to local_id by ken 10-25-26
                 
        
                 // Add payments to the breakdown

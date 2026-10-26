@@ -166,6 +166,7 @@
                                         <th class="px-4 py-3 w-32">Quantity</th>
                                         <th class="px-4 py-3 w-24">Unit</th>
                                         <th class="px-4 py-3 w-32 text-center">Unit Price</th>
+                                        <th class="px-4 py-3 w-32 text-center">Buying Price</th>
                                         <th class="px-4 py-3 w-32">Added Price</th>
                                         <th class="px-4 py-3 w-32 text-center">Line Total</th>
                                         <th class="px-4 py-3 w-16">Action</th>
@@ -271,34 +272,41 @@
                 </div>
 
                 <div>
-                    <p class="block text-base font-bold text-gray-900 mb-2">Price Type <span class="text-red-600">*</span></p>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <p class="block text-base font-bold text-gray-900 mb-2"> Select Selling Price Types<span class="text-red-600">*</span></p>
+                    <div class="grid grid-cols-3 gap-3">
                         <label class="flex items-center gap-2 px-3 py-2 border-2 border-gray-300 rounded-lg cursor-pointer hover:bg-blue-50">
                             <input type="radio" name="modal_price_type" value="wholesale" data-label="Wholesale" class="text-blue-700 focus:ring-blue-500">
-                            <span class="text-sm font-semibold text-gray-800">Wholesale</span>
+                            <span id="wholesalePriceOption" class="text-sm font-semibold text-gray-800">Wholesale</span>
                         </label>
+
                         <label class="flex items-center gap-2 px-3 py-2 border-2 border-gray-300 rounded-lg cursor-pointer hover:bg-blue-50">
                             <input type="radio" name="modal_price_type" value="retail" data-label="Retail" class="text-blue-700 focus:ring-blue-500">
-                            <span class="text-sm font-semibold text-gray-800">Retail</span>
+                            <span id="retailPriceOption" class="text-sm font-semibold text-gray-800">Retail</span>
                         </label>
+
                         <label class="flex items-center gap-2 px-3 py-2 border-2 border-gray-300 rounded-lg cursor-pointer hover:bg-blue-50">
                             <input type="radio" name="modal_price_type" value="slab" data-label="Slab" class="text-blue-700 focus:ring-blue-500">
-                            <span class="text-sm font-semibold text-gray-800">Slab</span>
-                        </label>
-                        <label class="flex items-center gap-2 px-3 py-2 border-2 border-gray-300 rounded-lg cursor-pointer hover:bg-blue-50">
-                            <input type="radio" name="modal_price_type" value="buying_price" data-label="Buying Price" class="text-blue-700 focus:ring-blue-500">
-                            <span class="text-sm font-semibold text-gray-800">Buying Price</span>
+                            <span id="slabPriceOption" class="text-sm font-semibold text-gray-800">Slab</span>
                         </label>
                     </div>
                 </div>
                 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label for="priceTypePrice" id="priceTypePriceLabel" class="block text-base font-bold text-gray-900 mb-2">
-                            Price Type's Price
+                            Selling Price
                         </label>
                         <div class="relative">
                             <input type="number" id="priceTypePrice" min="0" step="0.001" disabled class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg bg-gray-100 text-gray-600 font-semibold text-base cursor-not-allowed">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="buyingPriceDisplay" class="block text-base font-bold text-gray-900 mb-2">
+                            Buying Price
+                        </label>
+                        <div class="relative">
+                            <input type="text" id="buyingPriceDisplay" readonly disabled class="w-full px-4 py-3 border-2 border-gray-300 rounded-lg bg-gray-100 text-gray-600 font-semibold text-base cursor-not-allowed" placeholder="Select an item to load">
                         </div>
                     </div>
 
@@ -411,7 +419,7 @@
                     'wholesale_price' => (float) ($menu->wholesale_price ?? 0),
                     'retail_price' => (float) ($menu->retail_price ?? 0),
                     'slab_price' => (float) ($menu->slab_price ?? 0),
-                    'buying_price' => (float) ($menu->food_cost ?? 0),
+                    'buying_price' => $menu->buying_price !== null ? (float) $menu->buying_price : null,
                     'current_quantity' => (float) ($menu->current_quantity ?? 0),
                     'unit' => $menu->unit ?? '',
                 ];
@@ -678,7 +686,7 @@
                         wholesalePrice: item.wholesale_price || 0,
                         retailPrice: item.retail_price || 0,
                         slabPrice: item.slab_price || 0,
-                        buyingPrice: item.buying_price || 0,
+                        buyingPrice: item.buying_price,
                         stock: item.current_quantity || 0,
                         unit: item.unit || ''
                     });
@@ -756,6 +764,7 @@
             document.getElementById('brandSearchResults').classList.add('hidden');
             document.getElementById('currentStockDisplay').classList.add('hidden');
             document.getElementById('priceTypePrice').value = '';
+            document.getElementById('buyingPriceDisplay').value = '';
             document.getElementById('modalPrice').value = '';
 
             delete brandSelect.dataset.selectedUnit;
@@ -768,6 +777,7 @@
             delete brandSelect.dataset.buyingPrice;
             delete brandSelect.dataset.currentStock;
 
+            updateSellingPriceTypeOptionLabels();
             toggleBrandSearchClearButton();
             resetModalQuantityState();
             updateQuantityBreakdownButtonState();
@@ -820,20 +830,38 @@
                 wholesale: brandSelect.dataset.wholesalePrice,
                 retail: brandSelect.dataset.retailPrice,
                 slab: brandSelect.dataset.slabPrice,
-                buying_price: brandSelect.dataset.buyingPrice,
             };
 
             return parseFloat(prices[priceType]) || 0;
         }
 
+        function updateSellingPriceTypeOptionLabels() {
+            const brandSelect = document.getElementById('modalBrand');
+            const priceTypeOptionLabels = {
+                wholesale: document.getElementById('wholesalePriceOption'),
+                retail: document.getElementById('retailPriceOption'),
+                slab: document.getElementById('slabPriceOption'),
+            };
+
+            Object.entries(priceTypeOptionLabels).forEach(([priceType, optionLabel]) => {
+                const label = document.querySelector(`input[name="modal_price_type"][value="${priceType}"]`).dataset.label;
+                optionLabel.textContent = brandSelect.value
+                    ? `${label} ${formatPeso(getBrandPriceForType(priceType))}`
+                    : label;
+            });
+        }
+
         function updatePriceTypePrice() {
             const selectedPriceType = document.querySelector('input[name="modal_price_type"]:checked');
-            const label = selectedPriceType ? selectedPriceType.dataset.label : 'Price Type';
             const priceTypePriceInput = document.getElementById('priceTypePrice');
+            const buyingPriceDisplay = document.getElementById('buyingPriceDisplay');
             const brandSelect = document.getElementById('modalBrand');
             const hasSelectedBrand = Boolean(brandSelect.value);
 
-            document.getElementById('priceTypePriceLabel').textContent = selectedPriceType ? `${label}'s Price` : "Price Type's Price";
+            updateSellingPriceTypeOptionLabels();
+
+            const buyingPrice = Number.parseFloat(brandSelect.dataset.buyingPrice);
+            buyingPriceDisplay.value = Number.isFinite(buyingPrice) ? formatPeso(buyingPrice) : '';
 
             if (!selectedPriceType || !hasSelectedBrand) {
                 priceTypePriceInput.value = '';
@@ -1150,7 +1178,7 @@
             const wholesalePrice = selectedOption.dataset.wholesalePrice || 0;
             const retailPrice = selectedOption.dataset.retailPrice || 0;
             const slabPrice = selectedOption.dataset.slabPrice || 0;
-            const buyingPrice = selectedOption.dataset.buyingPrice || 0;
+            const buyingPrice = selectedOption.dataset.buyingPrice;
             const unit = selectedOption.dataset.unit || '';
             const menuId = selectedOption.dataset.menuId || '';
 
@@ -1622,11 +1650,11 @@
             document.getElementById('modalBrandSearch').value = '';
             document.getElementById('modalBrandSearch').disabled = true;
             document.getElementById('brandSearchResults').classList.add('hidden');
+            updateSellingPriceTypeOptionLabels();
             
             document.getElementById('modalQuantity').value = '';
             document.getElementById('modalPrice').value = '';
             document.getElementById('priceTypePrice').value = '';
-            document.getElementById('priceTypePriceLabel').textContent = "Price Type's Price";
             document.querySelectorAll('input[name="modal_price_type"]').forEach(input => input.checked = false);
             document.getElementById('currentStockDisplay').classList.add('hidden');
             document.getElementById('lineTotalPreview').textContent = '₱0.00';
@@ -1673,6 +1701,7 @@
             const quantity = parseFloat(quantityValue);
             const price = getAddedPriceNumber(document.getElementById('modalPrice').value);
             const priceTypePrice = parseFloat(document.getElementById('priceTypePrice').value) || 0;
+            const buyingPrice = parseFloat(brandSelect.dataset.buyingPrice);
             const currentStock = parseFloat(document.getElementById('modalBrand').dataset.currentStock) || 0;
             const unit = document.getElementById('modalBrand').dataset.selectedUnit || (selectedBrandOption ? selectedBrandOption.dataset.unit : '');
             const originalPrice = document.getElementById('modalBrand').dataset.originalMenuPrice || (selectedBrandOption ? selectedBrandOption.dataset.price : price);
@@ -1697,6 +1726,11 @@
                 return;
             }
 
+            if (!Number.isFinite(buyingPrice) || buyingPrice < 0) {
+                alert('This item has no purchase-order buying price and cannot be transferred.');
+                return;
+            }
+
             if (exceedsAvailableStock(quantity, currentStock)) {
                 alert(`Quantity cannot exceed current stock (${formatQuantity(currentStock)} ${unit || 'units'}).`);
                 return;
@@ -1711,6 +1745,7 @@
                 price_type: priceType,
                 price_type_label: priceTypeLabel,
                 price_type_price: priceTypePrice,
+                buying_price: buyingPrice,
                 item_name: itemName,
                 quantity: quantity,
                 quantity_breakdown: quantityBreakdown,
@@ -1721,7 +1756,7 @@
                 lineTotal: lineTotal
             });
 
-            addRowToTable(brandName, priceTypeLabel, itemName, quantity, unit, priceTypePrice, price, lineTotal);
+            addRowToTable(brandName, priceTypeLabel, itemName, quantity, unit, priceTypePrice, buyingPrice, price, lineTotal);
             updateTotals();
 
             closeQuantityBreakdown();
@@ -1729,11 +1764,12 @@
             document.getElementById('addItemModal').classList.add('hidden');
         });
 
-        function addRowToTable(brand, priceType, item, quantity, unit, unitPrice, addedPrice, lineTotal) {
+        function addRowToTable(brand, priceType, item, quantity, unit, unitPrice, buyingPrice, addedPrice, lineTotal) {
             const tbody = document.getElementById('itemsTableBody');
             const tr = document.createElement('tr');
             const rowIndex = itemsData.length - 1;
             const unitPriceDisplay = Number.isFinite(parseFloat(unitPrice)) ? formatPeso(unitPrice) : formatPeso(0);
+            const buyingPriceDisplay = Number.isFinite(parseFloat(buyingPrice)) ? formatPeso(buyingPrice) : formatPeso(0);
             
             tr.innerHTML = `
                 <td class="px-4 py-3 text-gray-700">${brand}</td>
@@ -1742,6 +1778,7 @@
                 <td class="px-4 py-3"><input type="number" step="0.001" value="${formatQuantity(quantity)}" readonly class="w-full px-2 py-1 border rounded qty-input bg-gray-100 cursor-pointer" data-index="${rowIndex}" title="Click to edit quantity breakdown"></td>
                 <td class="px-4 py-3 text-gray-700">${unit}</td>
                 <td class="px-4 py-3 unit-price text-center text-gray-700 whitespace-nowrap">${unitPriceDisplay}</td>
+                <td class="px-4 py-3 buying-price text-center text-gray-700 whitespace-nowrap">${buyingPriceDisplay}</td>
                 <td class="px-4 py-3"><input type="text" inputmode="numeric" maxlength="7" pattern="[0-9]*" value="${formatAddedPriceForInput(addedPrice)}" class="w-full px-2 py-1 border rounded price-input" data-index="${rowIndex}"></td>
                 <td class="px-4 py-3 line-total text-center font-semibold whitespace-nowrap">${formatPeso(lineTotal)}</td>
                 <td class="px-4 py-3 text-center">
@@ -1819,6 +1856,11 @@
                 return;
             }
 
+            if (itemsData.some(item => !Number.isFinite(item.buying_price) || item.buying_price < 0)) {
+                alert('Every transfer item must have a purchase-order buying price. Remove items without a buying price and add them again after verifying their purchase order.');
+                return;
+            }
+
             const salesInvoice = document.getElementById('sales_invoice').value.trim();
             if (!salesInvoice) {
                 alert('Please select a branch to generate the transaction number');
@@ -1843,6 +1885,12 @@
                 priceTypePriceInput.name = `items[${index}][price_type_price]`;
                 priceTypePriceInput.value = item.price_type_price || 0;
                 this.appendChild(priceTypePriceInput);
+
+                const buyingPriceInput = document.createElement('input');
+                buyingPriceInput.type = 'hidden';
+                buyingPriceInput.name = `items[${index}][buying_price]`;
+                buyingPriceInput.value = item.buying_price;
+                this.appendChild(buyingPriceInput);
 
                 const quantityInput = document.createElement('input');
                 quantityInput.type = 'hidden';
@@ -1917,8 +1965,7 @@
             const labels = {
                 wholesale: 'Wholesale',
                 retail: 'Retail',
-                slab: 'Slab',
-                buying_price: 'Buying Price'
+                slab: 'Slab'
             };
 
             return labels[value] || '';
@@ -1937,6 +1984,8 @@
                 const unit = item.unit || '';
                 const price = getAddedPriceNumber(formatAddedPriceForInput(item.price));
                 const priceTypePrice = parseFloat(item.price_type_price) || 0;
+                const sourceMenu = allMenus.find(menu => String(menu.id) === String(item.menu_id));
+                const buyingPrice = parseFloat(item.buying_price ?? sourceMenu?.buying_price);
                 const lineTotal = calculateLineTotal(quantity, priceTypePrice, price);
                 
                 itemsData.push({
@@ -1945,6 +1994,7 @@
                     price_type: priceType,
                     price_type_label: priceTypeLabel,
                     price_type_price: priceTypePrice,
+                    buying_price: buyingPrice,
                     item_name: itemName,
                     quantity: quantity,
                     quantity_breakdown: item.quantity_breakdown && item.quantity_breakdown.length ? item.quantity_breakdown : [quantity],
@@ -1955,7 +2005,7 @@
                     lineTotal: lineTotal
                 });
                 
-                addRowToTable(brandName, priceTypeLabel, itemName, quantity, unit, priceTypePrice, price, lineTotal);
+                addRowToTable(brandName, priceTypeLabel, itemName, quantity, unit, priceTypePrice, buyingPrice, price, lineTotal);
             });
             
             updateTotals();

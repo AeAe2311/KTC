@@ -19,7 +19,7 @@
             @php
                 $settings = DB::table('settings')->where('id', 1)->first();
             @endphp
-            <img src="{{ asset('storage/'.$settings->logo) }}" class=" w-52" alt="">
+            
             <div class="w-11/12 max-w-md mt-6 px-6 py-4 bg-white shadow-xl overflow-hidden rounded-lg">
                 {{ $slot }}
             </div>

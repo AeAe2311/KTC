@@ -19,9 +19,16 @@ return new class extends Migration
             $table->string('quantity');
             $table->string('quantity_after');
             $table->string('amount')->nullable();
-            $table->integer('is_paid')->default(1);
+            $table->unsignedBigInteger('category_id')->nullable();
+            $table->decimal('unit_price', 12, 4)->nullable();
+            $table->integer('exp_type')->default(0);
+            $table->string('unit')->nullable();
             $table->string('remarks');
             $table->string('user_id');
+            $table->unsignedBigInteger('supplier_id')->nullable();
+            $table->string('is_paid')->default('1');
+            $table->integer('payment_class')->nullable();
+            $table->string('store_code')->nullable();
             $table->timestamps();
         });
     }

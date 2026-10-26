@@ -368,10 +368,10 @@
         <div class="bg-white rounded-lg shadow-md p-4 mb-4">
             <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
                 <div class="flex flex-wrap gap-2">
-                    <a href="{{ route('expenses.add', ['form' => 'cost']) }}"
+                    <!-- <a href="{{ route('expenses.add', ['form' => 'cost']) }}"
                     class="inline-flex items-center px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold rounded-lg transition-colors">
                         <i class="uil uil-plus mr-1"></i>ADD COST OF SALES
-                    </a>
+                    </a> -->
                     <a href="{{ route('expenses.add', ['form' => 'operating']) }}"
                     class="inline-flex items-center px-4 py-2 bg-green-700 hover:bg-green-800 text-white text-sm font-semibold rounded-lg transition-colors">
                         <i class="uil uil-plus mr-1"></i>ADD OPERATING EXP

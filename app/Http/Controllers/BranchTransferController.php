@@ -14,7 +14,9 @@ use App\Models\Transaction;
 use App\Models\TransactionRequest;
 use App\Models\BranchTransactionRequest;
 use App\Models\InventoryMovement;
+use App\Models\InventoryTransaction;
 use App\Models\Log;
+use App\Models\PendingPurchaseOrder;
 use App\Models\Setting;
 use Exception;
 use Illuminate\Http\Request;
@@ -64,6 +66,24 @@ class BranchTransferController extends Controller {
             ->orderBy('name', 'asc')
             ->get();
 
+        $buyingPrices = DB::table('purchase_ordered')
+            ->where('purchase_ordered.store_code', $user->store_code)
+            ->whereIn('purchase_ordered.menu_id', $menus->pluck('id'))
+            ->where('purchase_ordered.remaining_stocks', '>', 0)
+            ->orderBy('purchase_ordered.id')
+            ->get(['purchase_ordered.menu_id', 'purchase_ordered.price'])
+            ->unique('menu_id')
+            ->keyBy('menu_id');
+
+        $menus->each(function (Menu $menu) use ($buyingPrices) {
+            $menu->setAttribute(
+                'buying_price',
+                $buyingPrices->get($menu->id)?->price !== null
+                    ? (float) $buyingPrices->get($menu->id)->price
+                    : null
+            );
+        });
+
         $pendingOrders = DB::table('branch_transaction_requests')
             ->where('order_status', 'PENDING')
             ->get();
@@ -91,8 +111,9 @@ class BranchTransferController extends Controller {
             'order_date' => 'required|date',
             'items' => 'required|array|min:1',
             'items.*.menu_id' => 'required|integer|exists:menus,id',
-            'items.*.price_type' => 'required|in:wholesale,retail,slab,buying_price',
+            'items.*.price_type' => 'required|in:wholesale,retail,slab',
             'items.*.price_type_price' => 'nullable|numeric|min:0',
+            'items.*.buying_price' => 'required|numeric|min:0',
             'items.*.quantity' => 'required|numeric|min:0.01',
             'items.*.quantity_breakdown' => 'nullable|array',
             'items.*.quantity_breakdown.*' => 'numeric|min:0.001',
@@ -125,6 +146,13 @@ class BranchTransferController extends Controller {
                 $currentStock = $this->getMenuCurrentStock($menu);
                 $this->assertQuantityWithinStock($quantity, $currentStock, $menu->name);
 
+                $buyingLot = $this->getCurrentPurchaseOrderLot($menu);
+                $buyingPrice = (float) $buyingLot->price;
+                if (round((float) $item['buying_price'], 2) !== round($buyingPrice, 2)) {
+                    throw ValidationException::withMessages([
+                        'items' => $menu->name . ' buying price changed. Refresh the transfer page and try again.',
+                    ]);
+                }
                 $priceTypePrice = $this->getMenuPriceByType($menu, $item['price_type'] ?? '');
                 $addedPrice = (float) $item['price'];
                 $lineTotal = ($quantity * $priceTypePrice) + $addedPrice;
@@ -136,6 +164,8 @@ class BranchTransferController extends Controller {
                     'quantity_breakdown' => $quantityBreakdown,
                     'current_stock' => $currentStock,
                     'price_type_price' => $priceTypePrice,
+                    'buying_price' => $buyingPrice,
+                    'pending_purchase_order_id' => $buyingLot->pending_purchase_order_id,
                     'added_price' => $addedPrice,
                     'line_total' => $lineTotal,
                 ];
@@ -163,6 +193,8 @@ class BranchTransferController extends Controller {
                 $quantityBreakdown = $preparedItem['quantity_breakdown'];
                 $currentStock = $preparedItem['current_stock'];
                 $priceTypePrice = $preparedItem['price_type_price'];
+                $buyingPrice = $preparedItem['buying_price'];
+                $pendingPurchaseOrderId = $preparedItem['pending_purchase_order_id'];
                 $addedPrice = $preparedItem['added_price'];
                 $lineTotal = $preparedItem['line_total'];
 
@@ -187,7 +219,15 @@ class BranchTransferController extends Controller {
                     'slug' => $this->makeUniqueSlug('branch_requests'),
                     'created_at' => now(),
                     'updated_at' => now(),
-                ], $this->makeLocationTransferMetadataFields($item['price_type'] ?? '', $addedPrice, $quantityBreakdown)));
+                ], $this->makeLocationTransferMetadataFields(
+                    $item['price_type'] ?? '',
+                    $addedPrice,
+                    $quantityBreakdown,
+                    [],
+                    '',
+                    $buyingPrice,
+                    $pendingPurchaseOrderId
+                )));
             }
 
             $log = new Log();
@@ -382,7 +422,15 @@ class BranchTransferController extends Controller {
                         'total_price' => $lineTotal,
                         'current_stock' => $currentStock,
                         'updated_at' => now(),
-                    ], $this->makeLocationTransferMetadataFields($priceType, $addedPrice, $quantityBreakdown)));
+                    ], $this->makeLocationTransferMetadataFields(
+                        $priceType,
+                        $addedPrice,
+                        $quantityBreakdown,
+                        [],
+                        '',
+                        $this->getBuyingCostFromRemarks($branchRequest->remarks ?? ''),
+                        $this->getPendingPurchaseOrderIdFromRemarks($branchRequest->remarks ?? '')
+                    )));
             }
 
             DB::table('branch_transaction_requests')
@@ -480,7 +528,8 @@ class BranchTransferController extends Controller {
                         $this->getAddedPriceFromRemarks($item->remarks ?? ''),
                         $this->getQuantityBreakdownFromItem($item, (float) ($item->quantity ?? 0)),
                         $this->getQuantityBreakdownStatusesFromItem($item, count($this->getQuantityBreakdownFromItem($item, (float) ($item->quantity ?? 0)))),
-                        'APPROVED'
+                        'APPROVED',
+                        $this->getBuyingCostFromRemarks($item->remarks ?? '')
                     )));
             }
 
@@ -735,6 +784,7 @@ class BranchTransferController extends Controller {
             'checked_by' => 'required|string|max:255',
             'received_by' => 'nullable|string|max:255',
             'remarks' => 'nullable|string|max:1000',
+            'mode_of_payment' => 'nullable|in:CASH,BANK TRANSFER',
             'items' => 'required|array|min:1',
             'items.*.id' => 'required|integer|exists:branch_requests,id',
             'items.*.quantity' => 'required|numeric|min:0.1',
@@ -750,6 +800,7 @@ class BranchTransferController extends Controller {
             $transaction = DB::table('branch_transaction_requests')
                 ->where('id', $id)
                 ->whereIn('order_status', ['APPROVED', 'CHECKING'])
+                ->lockForUpdate()
                 ->first();
 
             if (!$transaction) {
@@ -763,6 +814,7 @@ class BranchTransferController extends Controller {
             }
 
             $totalAmount = 0;
+            $modeOfPayment = $request->input('mode_of_payment') ?: '1';
 
             foreach ($request->items as $item) {
                 $branchRequest = DB::table('branch_requests')
@@ -781,13 +833,40 @@ class BranchTransferController extends Controller {
                 $this->assertQuantityBreakdownMatches($quantityBreakdown, $receivedQty);
                 $breakdownStatuses = $this->normalizeQuantityBreakdownStatuses($item['breakdown_statuses'] ?? [], count($quantityBreakdown));
                 $approvedQty = (float) ($branchRequest->qty_approved ?? $branchRequest->quantity ?? 0);
+                $sourceMenu = Menu::find($branchRequest->inv_id);
+                if (!$sourceMenu) {
+                    throw ValidationException::withMessages([
+                        'items' => $branchRequest->name . ' could not be found in the sending branch inventory.',
+                    ]);
+                }
+                $buyingPrice = $this->getBuyingCostFromRemarks($branchRequest->remarks ?? '');
+                $pendingPurchaseOrderId = $this->getPendingPurchaseOrderIdFromRemarks($branchRequest->remarks ?? '');
+                if ($buyingPrice === null || $pendingPurchaseOrderId === null) {
+                    $buyingLot = $this->getCurrentPurchaseOrderLot($sourceMenu);
+                    $buyingPrice ??= (float) $buyingLot->price;
+                    $pendingPurchaseOrderId ??= (int) $buyingLot->pending_purchase_order_id;
+                }
+                $pendingPurchaseOrder = PendingPurchaseOrder::find($pendingPurchaseOrderId);
+                if (!$pendingPurchaseOrder) {
+                    throw ValidationException::withMessages([
+                        'items' => $branchRequest->name . ' has no valid source purchase order.',
+                    ]);
+                }
                 $price = (float) ($branchRequest->price ?? 0);
                 $addedPrice = $this->getAddedPriceFromRemarks($branchRequest->remarks ?? '');
                 $priceType = $this->getPriceTypeFromRemarks($branchRequest->remarks ?? '');
                 $lineTotal = ($receivedQty * $price) + $addedPrice;
 
                 $this->reconcileSenderStockForReceivedQuantity($transaction, $branchRequest, $approvedQty, $receivedQty);
-                $this->increaseDestinationStockForReceivedQuantity($transaction, $branchRequest, $receivedQty);
+                $this->increaseDestinationStockForReceivedQuantity(
+                    $transaction,
+                    $branchRequest,
+                    $receivedQty,
+                    $user,
+                    $modeOfPayment,
+                    $buyingPrice,
+                    $pendingPurchaseOrder
+                );
 
                 DB::table('branch_requests')
                     ->where('id', $branchRequest->id)
@@ -796,7 +875,15 @@ class BranchTransferController extends Controller {
                         'qty_received' => $receivedQty,
                         'total_price' => $lineTotal,
                         'updated_at' => now(),
-                    ], $this->makeLocationTransferMetadataFields($priceType, $addedPrice, $quantityBreakdown, $breakdownStatuses, 'RECEIVED')));
+                    ], $this->makeLocationTransferMetadataFields(
+                        $priceType,
+                        $addedPrice,
+                        $quantityBreakdown,
+                        $breakdownStatuses,
+                        'RECEIVED',
+                        $buyingPrice,
+                        $pendingPurchaseOrderId
+                    )));
 
                 $totalAmount += $lineTotal;
             }
@@ -1076,9 +1163,100 @@ class BranchTransferController extends Controller {
             'wholesale' => (float) ($menu->wholesale_price ?? 0),
             'retail' => (float) ($menu->retail_price ?? 0),
             'slab' => (float) ($menu->slab_price ?? 0),
-            'buying_price' => (float) ($menu->food_cost ?? 0),
             default => 0,
         };
+    }
+
+    private function getCurrentPurchaseOrderLot(Menu $menu)
+    {
+        $purchaseLot = DB::table('purchase_ordered')
+            ->leftJoin('pending_purchase_orders', 'pending_purchase_orders.id', '=', 'purchase_ordered.pending_purchase_order_id')
+            ->where('purchase_ordered.menu_id', $menu->id)
+            ->where('purchase_ordered.store_code', $menu->store_code)
+            ->where('purchase_ordered.remaining_stocks', '>', 0)
+            ->orderBy('purchase_ordered.id')
+            ->select(
+                'purchase_ordered.reference_number',
+                'purchase_ordered.menu_name',
+                'purchase_ordered.store_code',
+                'purchase_ordered.price',
+                'purchase_ordered.pending_purchase_order_id',
+                'pending_purchase_orders.supplier_id'
+            )
+            ->first();
+
+        if (!$purchaseLot) {
+            throw ValidationException::withMessages([
+                'items' => $menu->name . ' has no remaining purchase lot linked to a valid purchase order.',
+            ]);
+        }
+
+        if (!$purchaseLot->pending_purchase_order_id) {
+            $purchaseLot = $this->resolveTransferredPurchaseLotLineage($purchaseLot);
+        }
+
+        return $purchaseLot;
+    }
+
+    private function resolveTransferredPurchaseLotLineage($purchaseLot)
+    {
+        $transferSource = DB::table('branch_transaction_requests as transfer')
+            ->join('users', 'users.id', '=', 'transfer.cashier')
+            ->join('branch_requests', 'branch_requests.tran_id', '=', 'transfer.id')
+            ->where('transfer.number', $purchaseLot->reference_number)
+            ->where('branch_requests.name', $purchaseLot->menu_name)
+            ->where('users.store_code', '!=', $purchaseLot->store_code)
+            ->select('users.store_code as sender_store_code', 'branch_requests.inv_id as source_menu_id', 'branch_requests.remarks')
+            ->first();
+
+        if (!$transferSource) {
+            throw ValidationException::withMessages([
+                'items' => $purchaseLot->menu_name . ' has no linked purchase order for its buying price.',
+            ]);
+        }
+
+        $sourceMenu = Menu::where('store_code', $transferSource->sender_store_code)
+            ->find($transferSource->source_menu_id);
+        if (!$sourceMenu) {
+            throw ValidationException::withMessages([
+                'items' => $purchaseLot->menu_name . ' source inventory could not be found to trace its buying price.',
+            ]);
+        }
+
+        $sourcePurchaseOrderId = $this->getPendingPurchaseOrderIdFromRemarks($transferSource->remarks ?? '');
+        if ($sourcePurchaseOrderId !== null) {
+            $sourcePurchaseOrder = PendingPurchaseOrder::find($sourcePurchaseOrderId);
+            if ($sourcePurchaseOrder) {
+                $purchaseLot->pending_purchase_order_id = $sourcePurchaseOrder->id;
+                $purchaseLot->supplier_id = $sourcePurchaseOrder->supplier_id;
+
+                return $purchaseLot;
+            }
+        }
+
+        $buyingPrice = $this->getBuyingCostFromRemarks($transferSource->remarks ?? '') ?? (float) $purchaseLot->price;
+        $sourcePurchaseLot = DB::table('purchase_ordered')
+            ->join('pending_purchase_orders', 'pending_purchase_orders.id', '=', 'purchase_ordered.pending_purchase_order_id')
+            ->where('purchase_ordered.menu_id', $sourceMenu->id)
+            ->where('purchase_ordered.store_code', $sourceMenu->store_code)
+            ->where('purchase_ordered.price', $buyingPrice)
+            ->orderBy('purchase_ordered.id')
+            ->select(
+                'purchase_ordered.pending_purchase_order_id',
+                'pending_purchase_orders.supplier_id'
+            )
+            ->first();
+
+        if (!$sourcePurchaseLot) {
+            throw ValidationException::withMessages([
+                'items' => $purchaseLot->menu_name . ' source purchase order could not be traced.',
+            ]);
+        }
+
+        $purchaseLot->pending_purchase_order_id = $sourcePurchaseLot->pending_purchase_order_id;
+        $purchaseLot->supplier_id = $sourcePurchaseLot->supplier_id;
+
+        return $purchaseLot;
     }
 
     private function getMenuCurrentStock(Menu $menu): float
@@ -1297,7 +1475,15 @@ class BranchTransferController extends Controller {
         );
     }
 
-    private function increaseDestinationStockForReceivedQuantity($transaction, $branchRequest, float $receivedQty): void
+    private function increaseDestinationStockForReceivedQuantity(
+        $transaction,
+        $branchRequest,
+        float $receivedQty,
+        $user,
+        ?string $modeOfPayment,
+        float $buyingPrice,
+        PendingPurchaseOrder $pendingPurchaseOrder
+    ): void
     {
         if ($receivedQty <= 0) {
             return;
@@ -1346,6 +1532,61 @@ class BranchTransferController extends Controller {
         $destinationMenu->update($updateData);
 
         $destinationMenu->refresh();
+        if (!$sourceMenu) {
+            throw ValidationException::withMessages([
+                'items' => $branchRequest->name . ' could not be found in the sending branch inventory.',
+            ]);
+        }
+
+        $lineTotal = $receivedQty * $buyingPrice;
+        $senderBranchName = $this->getLocationTransferSenderBranchName($transaction);
+        $transferNumber = $transaction->number ?? '';
+        $remarks = "$transferNumber - Location Transfer - From $senderBranchName";
+        $inventoryTransactionUuid = (string) Str::uuid();
+
+        $inventoryTransaction = InventoryTransaction::create([
+            'inv_id' => $destinationMenu->id,
+            'type' => 'TRADE PAYABLE',
+            'category_id' => 42,
+            'quantity_before' => $quantityBefore,
+            'quantity' => $receivedQty,
+            'quantity_after' => $newStock,
+            'amount' => $lineTotal,
+            'unit_price' => $buyingPrice,
+            'exp_type' => 0,
+            'remarks' => $remarks,
+            'unit' => $destinationMenu->unit,
+            'user_id' => $user->id,
+            'supplier_id' => $pendingPurchaseOrder->supplier_id,
+            'is_paid' => $modeOfPayment,
+            'is_uuid' => $inventoryTransactionUuid,
+            'payment_class' => 1,
+            'store_code' => $destinationStoreCode,
+        ]);
+
+        $purchaseOrderedSaved = DB::table('purchase_ordered')->insert([
+            'pending_purchase_order_id' => $pendingPurchaseOrder->id,
+            'menu_id' => $destinationMenu->id,
+            'quantity' => $receivedQty,
+            'price' => $buyingPrice,
+            'unit' => $destinationMenu->unit,
+            'menu_name' => $destinationMenu->name,
+            'brand_name' => $destinationMenu->brand?->name,
+            'brand_id' => $destinationMenu->brand_id,
+            'supplier_id' => $pendingPurchaseOrder->supplier_id,
+            'supplier_name' => $pendingPurchaseOrder->supplier?->name ?? 'Location Transfer from ' . $senderBranchName,
+            'reference_number' => $transferNumber,
+            'sales_invoice' => $transferNumber,
+            'store_code' => $destinationStoreCode,
+            'remaining_stocks' => $receivedQty,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        if (!$purchaseOrderedSaved) {
+            throw new \RuntimeException('Failed to save received location transfer to purchase_ordered.');
+        }
+
         $this->recordLocationTransferInventoryMovement(
             'LOCATION TRANSFER IN',
             $destinationMenu,
@@ -1354,7 +1595,10 @@ class BranchTransferController extends Controller {
             $receivedQty,
             0,
             $newStock,
-            'Received from ' . $this->getLocationTransferSenderBranchName($transaction)
+            'Received from ' . $senderBranchName,
+            $inventoryTransaction->id,
+            $buyingPrice,
+            $lineTotal
         );
     }
 
@@ -1497,14 +1741,17 @@ class BranchTransferController extends Controller {
         float $qtyIn,
         float $qtyOut,
         float $remaining,
-        string $detail
+        string $detail,
+        ?int $inventoryTransactionId = null,
+        float $unitPrice = 0,
+        float $cost = 0
     ): void {
         InventoryMovement::create([
             'type' => $type,
             'ordered_id' => null,
             'void_id' => null,
             'menu_id' => $menu->id,
-            'trans_id' => $transaction->id ?? null,
+            'trans_id' => $inventoryTransactionId ?? ($transaction->id ?? null),
             'trans_number' => $transaction->number ?? null,
             'si_number' => $transaction->number ?? null,
             'reference' => $transaction->number ?? null,
@@ -1514,8 +1761,8 @@ class BranchTransferController extends Controller {
             'qty_out' => $qtyOut,
             'remaining' => $remaining,
             'unit' => $menu->unit ?? null,
-            'sold_price' => 0,
-            'cost' => 0,
+            'sold_price' => $unitPrice,
+            'cost' => $cost,
             'created_at' => now(),
             'updated_at' => now(),
             'branch_code' => $menu->branch_code ?? '',
@@ -1596,6 +1843,24 @@ class BranchTransferController extends Controller {
         return (float) $matches[1];
     }
 
+    private function getBuyingCostFromRemarks(?string $remarks): ?float
+    {
+        if (!$remarks || !preg_match('/(?:^|;)\s*BC:([0-9]+(?:\.[0-9]+)?)/i', $remarks, $matches)) {
+            return null;
+        }
+
+        return (float) $matches[1];
+    }
+
+    private function getPendingPurchaseOrderIdFromRemarks(?string $remarks): ?int
+    {
+        if (!$remarks || !preg_match('/(?:^|;)\s*PO:(\d+)/i', $remarks, $matches)) {
+            return null;
+        }
+
+        return (int) $matches[1];
+    }
+
     private function getPriceTypeFromRemarks(?string $remarks): string
     {
         if ($remarks && preg_match('/(?:^|;)\s*PT:([^;]+)/i', $remarks, $matches)) {
@@ -1614,7 +1879,9 @@ class BranchTransferController extends Controller {
         float $addedPrice,
         array $quantityBreakdown,
         array $breakdownStatuses = [],
-        string $itemStatus = ''
+        string $itemStatus = '',
+        ?float $buyingCost = null,
+        ?int $pendingPurchaseOrderId = null
     ): string
     {
         $breakdown = $this->normalizeQuantityBreakdown($quantityBreakdown, 0);
@@ -1625,6 +1892,8 @@ class BranchTransferController extends Controller {
         return 'PT:' . $priceType .
             ';AP:' . rtrim(rtrim(number_format($addedPrice, 2, '.', ''), '0'), '.') .
             ';QB:' . $encodedBreakdown .
+            ($buyingCost !== null ? ';BC:' . rtrim(rtrim(number_format($buyingCost, 4, '.', ''), '0'), '.') : '') .
+            ($pendingPurchaseOrderId !== null ? ';PO:' . $pendingPurchaseOrderId : '') .
             ($encodedStatuses ? ';BS:' . $encodedStatuses : '') .
             ($itemStatus ? ';IS:' . $itemStatus : '');
     }
@@ -1634,12 +1903,22 @@ class BranchTransferController extends Controller {
         float $addedPrice,
         array $quantityBreakdown,
         array $breakdownStatuses = [],
-        string $itemStatus = ''
+        string $itemStatus = '',
+        ?float $buyingCost = null,
+        ?int $pendingPurchaseOrderId = null
     ): array {
         $breakdown = $this->normalizeQuantityBreakdown($quantityBreakdown, 0);
         $statuses = $this->normalizeQuantityBreakdownStatuses($breakdownStatuses, count($breakdown));
         $fields = [
-            'remarks' => $this->makeLocationTransferRemarks($priceType, $addedPrice, $breakdown, $statuses, $itemStatus),
+            'remarks' => $this->makeLocationTransferRemarks(
+                $priceType,
+                $addedPrice,
+                $breakdown,
+                $statuses,
+                $itemStatus,
+                $buyingCost,
+                $pendingPurchaseOrderId
+            ),
         ];
 
         if ($this->branchRequestsHasColumn('quantity_breakdown')) {
@@ -1831,6 +2110,7 @@ class BranchTransferController extends Controller {
                     'approved_quantity' => (float) ($item->qty_approved ?? $quantity),
                     'price' => $price,
                     'added_price' => $addedPrice,
+                    'buying_price' => $this->getBuyingCostFromRemarks($item->remarks ?? ''),
                     'quantity_breakdown' => $quantityBreakdown,
                     'breakdown_statuses' => $this->getQuantityBreakdownStatusesFromItem($item, count($quantityBreakdown)),
                     'unit' => $item->unit ?? $menu?->unit ?? '',

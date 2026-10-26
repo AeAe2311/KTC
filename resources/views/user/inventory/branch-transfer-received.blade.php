@@ -676,6 +676,15 @@
             </div>
 
             <div class="mb-6">
+                <label for="receiveModeOfPayment" class="block text-sm font-semibold text-gray-700 mb-2">Mode of Payment (optional)</label>
+                <select id="receiveModeOfPayment" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                    <option value="">Unpaid / Payable</option>
+                    <option value="CASH">CASH</option>
+                    <option value="BANK TRANSFER">BANK TRANSFER</option>
+                </select>
+            </div>
+
+            <div class="mb-6">
                 <label class="block text-sm font-semibold text-gray-700 mb-2">Remarks</label>
                 <textarea id="receiveRemarks" rows="4"
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"></textarea>
@@ -879,6 +888,7 @@
                 prepared_by: document.getElementById('preparedBy').value,
                 checked_by: document.getElementById('checkedBy').value,
                 received_by: receivedBy,
+                mode_of_payment: document.getElementById('receiveModeOfPayment').value || null,
                 remarks: document.getElementById('receiveRemarks').value,
                 items: items
             })

@@ -508,42 +508,11 @@ class IncomeStatementController extends Controller
                 ->orderBy('it.remarks')
                 ->get();
 
-            $is_field = DB::table('income_statement')->where('id', 2)->first();
-
-            $cogsInventoryQuery = DB::table('inventory_transactions as it')
-                ->join('expenses_categories as ec', 'it.category_id', '=', 'ec.id')
-                ->select(
-                    DB::raw('DATE_FORMAT(it.created_at, "%Y-%m") as month'),
-                    DB::raw('SUM(it.amount) as total')
-                )
-                ->where('ec.is_deleted', 0)
-                ->where('it.is_deleted', 0)
-                ->where('it.exp_type', 0)
-                ->where('it.created_at', '>=', $startDate)
-                ->where('it.created_at', '<', $endDate)
-                ->groupBy('month');
-
-            if ($userBranch && Schema::hasColumn('inventory_transactions', 'branch')) {
-                $cogsInventoryQuery->where('it.branch', $userBranch);
-            } elseif (!empty($branchCodes) && Schema::hasColumn('inventory_transactions', 'branch')) {
-                $cogsInventoryQuery->whereIn('it.branch', $branchCodes);
-            }
-
-            foreach ($cogsInventoryQuery->get() as $row) {
-                if (isset($cogsValueByMonth[$row->month])) {
-                    $cogsValueByMonth[$row->month] = (float) $row->total;
+            foreach ($months as $monthKey => $label) {
+                foreach ($cogsBreakdown[$monthKey] ?? [] as $breakdownRow) {
+                    $cogsValueByMonth[$monthKey] += (float) ($breakdownRow['amount'] ?? 0);
                 }
             }
-
-            //2020052801 JET START LINES 500 - 508
-            foreach ($months as $monthKey => $label) {
-                $cogsValueByMonth[$monthKey] =
-                    ($is_field->beginning ?? 0) +
-                    ($cogsValueByMonth[$monthKey] ?? 0) +
-                    ($purchasesByMonth[$monthKey] ?? 0) -
-                    ($is_field->scrap ?? 0) -
-                    ($is_field->ending ?? 0);
-            } //2020052801 JET END
 
             $cogsValue = array_sum($cogsValueByMonth);
 

@@ -678,11 +678,19 @@
                 });
 
                 // 20260528001 JET START LINES 680 - 685
-                var itemNames = keepOrder ? Object.keys(itemMap) : Object.keys(itemMap).sort(function (a, b) {
-                    var totalA = 0, totalB = 0;
-                    monthKeys.forEach(function (k) { totalA += itemMap[a][k]; totalB += itemMap[b][k]; });
-                    return totalB - totalA;
-                }); // 20260528001 JET END
+                var itemNames = Object.keys(itemMap);
+                if (keepOrder) {
+                    var beginningIndex = itemNames.indexOf('Beginning Inventory');
+                    if (beginningIndex > 0) {
+                        itemNames.unshift(itemNames.splice(beginningIndex, 1)[0]);
+                    }
+                } else {
+                    itemNames.sort(function (a, b) {
+                        var totalA = 0, totalB = 0;
+                        monthKeys.forEach(function (k) { totalA += itemMap[a][k]; totalB += itemMap[b][k]; });
+                        return totalB - totalA;
+                    });
+                } // 20260528001 JET END
 
                 var bodyHtml = '';
                 var grandTotal = 0;

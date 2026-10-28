@@ -10,6 +10,35 @@
             width: 0px;
             background: transparent;
         }
+
+        #MOPModal .mopButton {
+            min-height: 2.75rem;
+            border-radius: 0.65rem;
+            transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
+        }
+
+        #MOPModal .mopButton:hover {
+            filter: brightness(1.05);
+            box-shadow: 0 4px 10px rgb(15 23 42 / 12%);
+        }
+
+        #MOPModal .mopButton:active {
+            transform: scale(0.98);
+        }
+
+        #MOPModal .numpad-button {
+            min-height: 3rem;
+            border-radius: 0.65rem;
+            border-color: #e2e8f0;
+            background: #fff;
+            color: #0f172a;
+            transition: background-color 120ms ease, border-color 120ms ease;
+        }
+
+        #MOPModal .numpad-button:hover {
+            border-color: #93c5fd;
+            background: #eff6ff;
+        }
     </style>
     @section('page_title', 'ORDER PAGE')
     
@@ -322,37 +351,42 @@
         <button data-modal-target="MOPModal" data-modal-toggle="MOPModal" id="openMOPModal" class="hidden" type="button"></button>
     
         <!-- Main modal -->
-        <div id="MOPModal" data-modal-backdrop="static" tabindex="-1" aria-hidden="true" class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4  overflow-x-auto overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full " >
-            <div class="relative w-full  max-h-full ">
+        <div id="MOPModal" data-modal-backdrop="static" tabindex="-1" aria-hidden="true" class="fixed inset-0 z-50 hidden w-full overflow-y-auto bg-slate-950/50 p-3 md:p-6">
+            <div class="relative mx-auto my-2 w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-2xl md:my-6">
                 <!-- Modal content -->
-                <div class="relative  rounded-lg shadow bg-white ">
+                <div class="relative bg-white">
                     <!-- Modal header -->
-                    <div class="flex items-start justify-between p-4 border-b rounded-t">
-                        <h3 class="text-2xl font-semibold text-gray-900">
-                            Payment Section
-                        </h3>
-                        <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center" data-modal-hide="MOPModal">
+                    <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+                        <div>
+                            <h3 class="text-xl font-semibold tracking-tight text-slate-900">Payment</h3>
+                            <p class="mt-0.5 text-sm text-slate-500">Choose a payment method and enter the amount received.</p>
+                        </div>
+                        <button type="button" aria-label="Close payment" class="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" data-modal-hide="MOPModal">
                             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>  
                         </button>
                     </div>
                     <!-- Modal body -->
-                    <div class="p-2 space-y-1 overflow-y-auto overflow-x-hidden">
+                    <div class="max-h-[calc(100vh-11rem)] overflow-y-auto p-4 md:p-5">
                         <input type="hidden" name="mop" id="mop">
-                        <div class="grid grid-cols-3 gap-2 ">
-
-                            <div class="col-span-2">
-                                
-                                <div class="grid grid-cols-4 gap-2 h-50 overflow-y-auto overflow-x-hidden">
+                        <div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(19rem,0.9fr)]">
+                            <div class="min-w-0 space-y-4">
+                                <section aria-labelledby="paymentMethodHeading">
+                                    <div class="mb-2 flex items-center justify-between">
+                                        <h4 id="paymentMethodHeading" class="text-sm font-semibold text-slate-800">Payment method</h4>
+                                        <span class="text-xs text-slate-500">Select one</span>
+                                    </div>
+                                    <div class="grid max-h-40 grid-cols-2 gap-2 overflow-y-auto overflow-x-hidden pr-1 sm:grid-cols-3">
                                     @foreach($modeOfPayments as $modeOfPayment)
-                                        <div data-mop="{{ $modeOfPayment }}" class="dynamicMopButton mopButton text-white bg-blue-600 font-medium rounded-lg text-sm px-3 py-2 items-center w-full">
-                                            <button type="button" data-mop="{{ $modeOfPayment }}" class="mopButton text-white bg-blue-600 font-medium rounded-lg text-sm text-center inline-flex items-center justify-center w-full">
-                                                <span class="font-bold text-center">{{ $modeOfPayment }}</span>
+                                        <div data-mop="{{ $modeOfPayment }}" class="dynamicMopButton mopButton flex items-center justify-center bg-blue-600 px-2 py-2 text-white">
+                                            <button type="button" data-mop="{{ $modeOfPayment }}" class="mopButton flex w-full items-center justify-center bg-blue-600 text-center text-xs font-semibold">
+                                                <span>{{ $modeOfPayment }}</span>
                                             </button>
                                         </div>
                                     @endforeach
-                                </div>
+                                    </div>
+                                </section>
 
-                                <div id="legacyMopGrid" class="hidden grid grid-cols-4 gap-2 h-50 overflow-y-hidden overflow-x-hidden">
+                                <div id="legacyMopGrid" class="hidden grid grid-cols-2 gap-2 overflow-hidden sm:grid-cols-4">
 
                                     <!-- CASH -->
                                     <div data-mop="CASH" class="mopButton text-white bg-emerald-500  font-medium rounded-lg text-sm px-5  items-center w-full">
@@ -522,95 +556,90 @@
                                     </div>
 
 
-                                    
+
 
                                     
                                     
                                 </div>
+                                <section id="paymentDetailsPanel" class="hidden rounded-xl border border-slate-200 bg-slate-50 p-4" aria-labelledby="paymentDetailsHeading">
+                                    <div class="mb-3">
+                                        <h4 id="paymentDetailsHeading" class="text-sm font-semibold text-slate-800">Payment details</h4>
+                                        <p class="mt-0.5 text-xs text-slate-500">Optional information for non-cash payments.</p>
+                                    </div>
+                                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                        <label for="payor_name" class="block text-xs font-medium text-slate-600">Customer Name
+                                            <input type="text" id="payor_name" name="payor_name" autocomplete="name" class="mt-1 block h-10 w-full rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                        </label>
+                                        <label for="payor_number" class="block text-xs font-medium text-slate-600">Acc/Cp Number
+                                            <input type="text" id="payor_number" name="payor_number" autocomplete="off" class="mt-1 block h-10 w-full rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                        </label>
+                                        <label for="order_remarks" class="block text-xs font-medium text-slate-600 sm:col-span-2">Order Remarks
+                                            <input type="text" id="order_remarks" name="order_remarks" class="mt-1 block h-10 w-full rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                        </label>
+                                        <label for="ref_no" class="block text-xs font-medium text-slate-600">Reference No.
+                                            <input type="text" id="ref_no" name="ref_no" class="mt-1 block h-10 w-full rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                        </label>
+                                        <label for="bank_name" class="block text-xs font-medium text-slate-600">Bank
+                                            <input type="text" id="bank_name" name="bank_name" class="mt-1 block h-10 w-full rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                        </label>
+                                        <label for="payment_date" class="block text-xs font-medium text-slate-600 sm:col-span-2">Payment Date
+                                            <input type="date" id="payment_date" name="payment_date" value="{{ now()->toDateString() }}" class="mt-1 block h-10 w-full rounded-lg border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                        </label>
+                                    </div>
+                                </section>
                             </div>
-                            <input type="text" id="mopAmount" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 mb-2 text-center" disabled>
-                            <div>
-                            <!-- right content -->
-                            <div>
-                                    <div class="grid grid-cols-2 gap-2 overflow-y-auto overflow-x-hidden mb-2">
-                                        <label for="base-input" class="block  text-sm font-medium text-gray-900">Customer Name
-                                        <input type="text" id="payor_name" name="payor_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                                        </label>
-                                        <label for="base-input" class="block  text-sm font-medium text-gray-900">Acc/Cp Number
-                                        <input type="text" id="payor_number" name="payor_number" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                                        </label>
-                                        
-                                    
-                                    </div>
-                                    <div class="mb-2">
-                                        <label for="base-input" class="block  text-sm font-medium text-gray-900">Order Remarks
-                                        <input type="text" id="order_remarks" name="payor_number" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
-                                        </label>
-                                    </div>
-                                        <div class="grid grid-cols-2 gap-2 mb-2">
-                                            <label class="block text-xs font-medium text-gray-900">
-                                                Reference No.
-                                                <input type="text" id="ref_no" name="ref_no" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2">
-                                            </label>
-                                            <label class="block text-xs font-medium text-gray-900">
-                                                Bank
-                                                <input type="text" id="bank_name" name="bank_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2">
-                                            </label>
-                                            <label class="block text-xs font-medium text-gray-900">
-                                                Client
-                                                <input type="text" id="client_name" name="client_name" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2">
-                                            </label>
-                                            <label class="block text-xs font-medium text-gray-900">
-                                                Payment Date
-                                                <input type="date" id="payment_date" name="payment_date" value="{{ now()->toDateString() }}" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2">
-                                            </label>
-                                        </div>
+
+                            <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                                <label for="mopAmount" class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Amount received</label>
+                                <div class="relative mb-4">
+                                    <span class="absolute inset-y-0 left-3 flex items-center text-sm font-semibold text-slate-500">₱</span>
+                                    <input type="text" id="mopAmount" class="block h-12 w-full rounded-lg border-slate-300 bg-slate-50 pl-8 pr-3 text-right text-xl font-semibold text-slate-900 shadow-sm focus:border-blue-500 focus:ring-blue-500" disabled>
                                 </div>
-                                <div class="mb-3 flex justify-between w-full">
-                                    <span class="text-1xl">Amount : ₱ <span id="actualAmount">{{ number_format($total, 2, '.', ',') }}</span></span>
-                                    <span>MOP : <span id="selectedMOPtxt"><span class="text-red-600">Select Payment Method First</span></span></span>
-                                    
-                                </div>
-                                <div class=" overflow-y-auto overflow-x-hidden mb-3">
-                                    <div class="grid grid-cols-5 gap-2 w-full">
-                                        <button type="button" class="numpad-button aspect-square border shadow bg-gray-50 focus:scale-80 text-xl font-bold" data-value="7">7</button>
-                                        <button type="button" class="numpad-button aspect-square border shadow bg-gray-50 focus:scale-80 text-xl font-bold" data-value="8">8</button>
-                                        <button type="button" class="numpad-button aspect-square border shadow bg-gray-50 focus:scale-80 text-xl font-bold" data-value="9">9</button>
-                                        <button type="button" class="numpad-button row-span-2 col-span-2 border shadow bg-gray-50 focus:scale-80 text-xl font-bold" data-value="bs"><i class="uil uil-arrow-left"></i></button>
-
-                                        <button type="button" class="numpad-button aspect-square border shadow bg-gray-50 focus:scale-80 text-xl font-bold" data-value="4">4</button>
-                                        <button type="button" class="numpad-button aspect-square border shadow bg-gray-50 focus:scale-80 text-xl font-bold" data-value="5">5</button>
-                                        <button type="button" class="numpad-button aspect-square border shadow bg-gray-50 focus:scale-80 text-xl font-bold" data-value="6">6</button>
-
-                                        <button type="button" class="numpad-button aspect-square border shadow bg-gray-50 focus:scale-80 text-xl font-bold" data-value="1">1</button>
-                                        <button type="button" class="numpad-button aspect-square border shadow bg-gray-50 focus:scale-80 text-xl font-bold" data-value="2">2</button>
-                                        <button type="button" class="numpad-button aspect-square border shadow bg-gray-50 focus:scale-80 text-xl font-bold" data-value="3">3</button>
-                                        <button type="button" class="numpad-button col-span-2 border shadow bg-gray-50 focus:scale-80 font-bold" data-value="clr">CLEAR</button>
-
-                                        <button type="button" class="numpad-button aspect-square border shadow bg-gray-50 focus:scale-80 text-xl font-bold" data-value="0">0</button>
-                                        <button type="button" class="numpad-button aspect-square border shadow bg-gray-50 focus:scale-80 text-xl font-bold" data-value="00">00</button>
-                                        <button type="button" class="numpad-button aspect-square border shadow bg-gray-50 focus:scale-80 text-xl font-bold" data-value=".">.</button>
-                                        <button type="button" class="numpad-button col-span-2 border shadow bg-gray-50 focus:scale-80 font-bold" data-value="exact_btn" >EXACT</button>
+                                <div class="mb-3 flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 text-sm">
+                                    <div>
+                                        <span class="text-xs text-slate-500">Amount due</span>
+                                        <div class="font-semibold text-slate-900">₱ <span id="actualAmount">{{ number_format($total, 2, '.', ',') }}</span></div>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="text-xs text-slate-500">Method</span>
+                                        <div id="selectedMOPtxt" class="max-w-40 truncate font-semibold text-slate-800"><span class="text-rose-600">Select method</span></div>
                                     </div>
                                 </div>
+                                <div class="mb-3 grid grid-cols-5 gap-2">
+                                    <button type="button" class="numpad-button aspect-square text-lg font-semibold" data-value="7">7</button>
+                                    <button type="button" class="numpad-button aspect-square text-lg font-semibold" data-value="8">8</button>
+                                    <button type="button" class="numpad-button aspect-square text-lg font-semibold" data-value="9">9</button>
+                                    <button type="button" class="numpad-button col-span-2 row-span-2 text-lg font-semibold" data-value="bs" aria-label="Backspace"><i class="uil uil-arrow-left"></i></button>
 
-                                <!-- total section -->
-                                <div class="flex-inline text-center">
-                                    <label for="" class="text-1xl">Total : </label>
-                                    <span id="totalPayment" class="text-2xl">0</span>
+                                    <button type="button" class="numpad-button aspect-square text-lg font-semibold" data-value="4">4</button>
+                                    <button type="button" class="numpad-button aspect-square text-lg font-semibold" data-value="5">5</button>
+                                    <button type="button" class="numpad-button aspect-square text-lg font-semibold" data-value="6">6</button>
+
+                                    <button type="button" class="numpad-button aspect-square text-lg font-semibold" data-value="1">1</button>
+                                    <button type="button" class="numpad-button aspect-square text-lg font-semibold" data-value="2">2</button>
+                                    <button type="button" class="numpad-button aspect-square text-lg font-semibold" data-value="3">3</button>
+                                    <button type="button" class="numpad-button col-span-2 font-semibold" data-value="clr">CLEAR</button>
+
+                                    <button type="button" class="numpad-button aspect-square text-lg font-semibold" data-value="0">0</button>
+                                    <button type="button" class="numpad-button aspect-square text-base font-semibold" data-value="00">00</button>
+                                    <button type="button" class="numpad-button aspect-square text-lg font-semibold" data-value=".">.</button>
+                                    <button type="button" class="numpad-button col-span-2 font-semibold" data-value="exact_btn">EXACT</button>
                                 </div>
-                                
+                                <div class="flex items-center justify-between border-t border-slate-200 pt-3">
+                                    <span class="text-sm font-medium text-slate-600">Total received</span>
+                                    <span class="text-xl font-bold text-slate-900">₱ <span id="totalPayment">0</span></span>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div class="flex-inline text-center">
+                    <div class="text-center">
                         <!-- <input type="text" id="mopselected"> -->
-                        <p id="amountError" class="hidden text-2xl text-red-500 italic">Invalid amount. Please enter an amount more than or equal to <span class=" font-medium ml-1"> ₱ </span><span id="actualAmount2" class=" font-bold text-2xl">{{ number_format($total, 2, '.', ',') }}</span></p>
+                        <p id="amountError" class="hidden px-5 pb-3 text-sm font-medium text-rose-600">Amount received must be at least ₱ <span id="actualAmount2">{{ number_format($total, 2, '.', ',') }}</span>.</p>
                     </div>
                     <!-- Modal footer -->
-                    <div class="flex items-center p-2 space-x-6 border-t border-gray-300 rounded-b">
-                        <button  id="payNowButton" data-amount="{{ $total }}" type="button" class="text-white bg-emerald-600 hover:bg-emerald-500 focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg border border-gray-300 text-2xl font-medium px-5 py-5 hover:text-white focus:z-10 w-full">Submit</button>
-                        <button data-modal-hide="MOPModal" type="button" class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg border border-gray-300 text-2xl font-medium px-5 py-5 hover:text-gray-900 focus:z-10 w-full">Close</button>
+                    <div class="flex items-center gap-3 border-t border-slate-200 bg-slate-50 px-4 py-3 md:px-5">
+                        <button id="payNowButton" data-amount="{{ $total }}" type="button" class="w-full rounded-lg bg-emerald-600 px-5 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-200">Submit payment</button>
+                        <button data-modal-hide="MOPModal" type="button" class="w-full rounded-lg border border-slate-300 bg-white px-5 py-3 text-base font-semibold text-slate-700 transition hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-slate-200">Cancel</button>
                     </div>
                 </div>
             </div>
@@ -2301,6 +2330,9 @@
                     $('#mopAmount').val('').prop('disabled', true);
                     $('#mop').val('');
                     $('#totalPayment').text('0');
+                    $('#paymentDetailsPanel').addClass('hidden');
+                    $('#payor_name, #payor_number, #order_remarks, #ref_no, #bank_name').val('');
+                    $('#payment_date').val('{{ now()->toDateString() }}');
                     $('#openMOPModal').click();
                 }
             });
@@ -2321,9 +2353,10 @@
                 var sc_val = $('#sc_val').val();
                 var table = $('#table').val();
                 var mop = $('#mop').val();
-                var payor_name = $('#payor_name').val();
-                var payor_number = $('#payor_number').val();
-                var order_remarks = $('#order_remarks').val();
+                var requiresPaymentDetails = String(mop).trim().toUpperCase() !== 'CASH';
+                var payor_name = requiresPaymentDetails ? $('#payor_name').val() : '';
+                var payor_number = requiresPaymentDetails ? $('#payor_number').val() : '';
+                var order_remarks = requiresPaymentDetails ? $('#order_remarks').val() : '';
                 var _token = $('input[name="_token"]').val();
 
                 var limepercent = $('#limepercent').text();
@@ -2338,10 +2371,9 @@
                 var vatsales = $('#vatsales').val();
                 var vat = $('#vat').val();
                 var numPacks = $('#numPacks').val();
-                var ref_no = $('#ref_no').val();
-                var bank_name = $('#bank_name').val();
-                var client_name = $('#client_name').val();
-                var payment_date = $('#payment_date').val();
+                var ref_no = requiresPaymentDetails ? $('#ref_no').val() : '';
+                var bank_name = requiresPaymentDetails ? $('#bank_name').val() : '';
+                var payment_date = requiresPaymentDetails ? $('#payment_date').val() : '';
 
                 /* Start of computation */
 
@@ -2421,7 +2453,7 @@
                             }]),
                             ref_no: ref_no,
                             bank_name: bank_name,
-                            client_name: client_name,
+                            client_name: payor_name,
                             payment_date: payment_date,
                             _token: _token
                         },
@@ -2790,6 +2822,7 @@
                     $('#selectedMOPtxt').text(mop);
                     $('#mop').val(mop);
                     $('#mopAmount').prop('disabled', false).focus();
+                    $('#paymentDetailsPanel').toggleClass('hidden', String(mop).trim().toUpperCase() === 'CASH');
                     //$('#paymentMethod').val('1');
 
                     {{--$.ajax({

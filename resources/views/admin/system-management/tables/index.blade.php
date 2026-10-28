@@ -108,6 +108,7 @@
                                             <th scope="col" class="px-6 py-3 whitespace-nowrap">
                                                 Name
                                             </th>
+                                            <!-- LINE 111-114: Start of header credit limit by ken 10-2-26 -->
                                             <th scope="col" class="px-6 py-3 text-right whitespace-nowrap">
                                                 Credit Limit
                                             </th>
@@ -129,6 +130,7 @@
                                                 <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
                                                     {{ $table->name }}
                                                 </th>
+                                                <!-- LINE 133-136: Start of header credit limit by ken 10-2-26 -->
                                                 <td class="px-6 py-4 text-right whitespace-nowrap">
                                                     ₱ {{ number_format((float) ($table->credit_limit ?? 0), 2) }}
                                                 </td>
@@ -174,9 +176,9 @@
                                                                  <a href="'.url('/system-management/table/edit/'.$table->slug).'" class="text-blue-600 hover:underline font-semibold text-sm">Edit</a> | 
                                                                  <a type="button" data-modal-target="itemDeleteModal" data-modal-toggle="itemDeleteModal" data-slug="'.$table->slug.'" class="deleteButton text-red-600 hover:underline font-semibold text-sm">Delete</a>
                                                              </div>
-                                                             <div class="text-xs leading-5">Credit Limit</div>
+                                                             <div class="text-xs leading-5">Credit Limit</div> <!-- LINE 179: Added data for credit limit by ken 10-2-26 -->
                                                              <div class="col-span-2">₱ '.number_format((float) ($table->credit_limit ?? 0), 2).'</div>
-                                                             <div class="text-xs leading-5">Credits Remaining</div>
+                                                             <div class="text-xs leading-5">Credits Remaining</div> <!-- LINE 181: Added data for credit limit by ken 10-2-26 -->
                                                              <div class="col-span-2 '.(((float) ($table->credits_remaining ?? 0) < 0) ? 'text-red-600' : '').'">₱ '.number_format((float) ($table->credits_remaining ?? 0), 2).'</div>
                                                          </div>
                                                      </div>
@@ -198,10 +200,10 @@
                                                                  <a href="'.url('/system-management/table/edit/'.$table->slug).'" class="text-blue-600 hover:underline font-semibold text-sm">Edit</a> | 
                                                                  <a type="button" data-modal-target="itemDeleteModal" data-modal-toggle="itemDeleteModal" data-slug="'.$table->slug.'" class="deleteButton text-red-600 hover:underline font-semibold text-sm">Delete</a>
                                                              </div>
-                                                             <div>Credit Limit</div>
+                                                             <div>Credit Limit</div> <!-- LINE 203: Added data for credit limit by ken 10-2-26 -->
                                                              <div class="col-span-2">₱ '.number_format((float) ($table->credit_limit ?? 0), 2).'</div>
-                                                             <div>Credits Remaining</div>
-                                                             <div class="col-span-2 '.(((float) ($table->credits_remaining ?? 0) < 0) ? 'text-red-600' : '').'">₱ '.number_format((float) ($table->credits_remaining ?? 0), 2).'</div>
+                                                             <div>Credits Remaining</div> <!-- LINE 205: Added data for credit limit by ken 10-2-26 -->
+                                                             <div class="col-span-2 '.(((float) ($table->credits_remaining ?? 0) < 0) ? 'text-red-600' : '').'">₱ '.number_format((float) ($table->credits_remaining ?? 0), 2).'</div><!-- LINE 206: Added data for credit limit by ken 10-2-26 -->
                                                          </div>
                                                      </div>
                                                  </div>

@@ -615,7 +615,7 @@ Route::middleware("role:1,2,3,4,5,6,8,9")->group(function(){
     Route::get('/menu', [MenuController::class, 'index'])->name('menu.index');
     Route::get('/menu/add', [MenuController::class, 'add'])->name('menu.add');
     Route::post('/menus/generate-brand-code', [MenuController::class, 'genBrandCode'])->name('menus.generateBrandCode');
-    Route::post('/menus/generate-item-code', [MenuController::class, 'genItemCode'])->name('menus.generateItemCode');
+    Route::post('/menus/generate-item-code', [MenuController::class, 'genItemCode'])->name('menus.generateItemCode'); // LINE 618: ADDED BY KEN 10-26-26
     Route::get('/menu/edit/{slug}', [MenuController::class, 'edit']);
     //start ken added route for import, export, dowload template 12-13-2025
     Route::get('/menu/export/{branch?}', [MenuController::class, 'exportMenusCSV'])->name('menu.export');

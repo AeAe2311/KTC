@@ -483,7 +483,7 @@
                 <li>
                     <button type="button" class="{{ (Str::contains(url()->current(), url('/inventory')) || Str::contains(url()->current(), url('/menu'))) ? 'flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-white hover:shadow-md hover:border-gray-200 bg-gray-200 border border-gray-300 shadow-inner' : 'flex items-center p-2 text-base font-normal text-gray-900 rounded-lg border border-white hover:bg-white hover:shadow-md hover:border-gray-200';}}" aria-controls="stockDropdown" data-collapse-toggle="stockDropdown">
                         <i class="text-2xl text-gray-500 transition duration-75 uil uil-box group-hover:text-gray-900"></i>
-                        <span class="flex-1 ml-3 text-left whitespace-nowrap w-36 mr-2.5" sidebar-toggle-item>Supply Management</span>
+                        <span class="flex-1 ml-3 text-left whitespace-nowrap w-36 mr-2.5" sidebar-toggle-item>S.C.M.</span>
                         <i class="text-2xl text-gray-500 uil uil-angle-down"></i>
                     </button>
                     <ul id="stockDropdown" class="hidden py-2 space-y-2">                 

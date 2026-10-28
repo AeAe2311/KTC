@@ -66,14 +66,16 @@ class TableController extends Controller
         $branch = $request->branch;
         $tblcats = $request ->tblcats; // leo update 4-22
         $service_charge =  ($sc == 'on') ? 0 : 1;
-
+        $creditLimit = (float) ($request->credit_limit ?? 0);  // LINE 69: added by ken 10-2-26
         //echo $service_charge;
         $request->validate([
-            'name' => ['required'],
+            'name' => ['required'], 
+            'credit_limit' => ['nullable', 'numeric', 'min:0'], // LINE 73: added by ken 10-2-26
         ]);
 
         $table = new Table();
         $table->name = $name;
+        $table->credit_limit = $creditLimit; // LINE 78: added by ken 10-2-26
         $table->category = 1;
         $table->is_sc = $service_charge;
         $table->branch = 1;
@@ -99,18 +101,18 @@ class TableController extends Controller
         $sc = $request->sc;
         $branch = $request->branch;
         $tblcats = $request ->tblcats; // leo update 4-22
-        $creditLimit = (float) ($request->credit_limit ?? 0);
+        $creditLimit = (float) ($request->credit_limit ?? 0);  // LINE 104: added by ken 10-2-26
         $service_charge =  ($sc == 'on') ? 0 : 1;
 
         $request->validate([
             'name' => ['required'],
-            'credit_limit' => ['nullable', 'numeric', 'min:0'],
+            'credit_limit' => ['nullable', 'numeric', 'min:0'], // LINE 109: added by ken 10-2-26
         ]);
 
         DB::table('tables')->where('slug', $slug)
             ->update([
                 'name' => $name,
-                'credit_limit' => $creditLimit,
+                'credit_limit' => $creditLimit,  // LINE 115: added by ken 10-2-26
                 'category' => 1,
                 'is_sc' => $service_charge,
                 'branch' => 1,

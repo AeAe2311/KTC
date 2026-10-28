@@ -396,6 +396,7 @@ class IncomeStatementController extends Controller
                 )
                 ->where('it.is_deleted', 0)
                 ->where('it.exp_type', 0)
+                ->where('it.type','!=', 'TRADE PAYABLE')
                 ->where('it.created_at', '>=', $startDate)
                 ->where('it.created_at', '<', $endDate);
 

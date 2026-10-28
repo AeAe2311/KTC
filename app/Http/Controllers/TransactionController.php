@@ -339,10 +339,18 @@ class TransactionController extends Controller
             ->join('tables', function($join) {
                 $join->on('transactions.table', '=', 'tables.id');
             })
-            ->leftJoin('ordered', function($join) use ($startDate, $eendDate) {
-                $join->on('transactions.local_id', '=', 'ordered.tran_id')
-                    ->where('ordered.store_code', '=', auth()->user()->store_code)
-                    ->whereBetween('ordered.created_at', [$startDate, $eendDate]); // Filter ordered items by date range
+            ->leftJoin('ordered', function ($join) use ($startDate, $eendDate) {
+                $join->where('ordered.store_code', '=', auth()->user()->store_code)
+                    ->whereBetween('ordered.created_at', [$startDate, $eendDate])
+                    ->where(function ($q) {
+                        // Primary match: transaction.local_id = ordered.tran_id
+                        $q->whereColumn('transactions.local_id', '=', 'ordered.tran_id')
+                        // Fallback: only when tran_id is null, match on UUIDs
+                        ->orWhere(function ($q2) {
+                            $q2->whereNull('ordered.tran_id')
+                                ->whereColumn('ordered.tran_uuid', '=', 'transactions.is_uuid');
+                        });
+                    });
             })
             ->leftJoin('menus', function($join) {
                 $join->on('ordered.menu_uuid', '=', 'menus.is_uuid')
@@ -877,7 +885,7 @@ public function update(Request $request)
                 'ordered.quantity as ordered_quantity',
                 'ordered.amount as ordered_amount',
                 'ordered.discount_amount as ordered_discount_amount',
-                'ordered.food_cost as ordered_food_cost',
+                'ordered_cogs.po_total as ordered_food_cost',
                 'ordered.price_type',
                 'ordered.cashier',
                 'ordered.status as ordered_status',
@@ -889,6 +897,7 @@ public function update(Request $request)
                 'menus.wholesale_price',
                 'brands.name as brand_name'
             )
+            ->join('ordered_cogs', 'transactions.is_uuid', '=', 'ordered_cogs.tran_uuid')
             ->join('tables', 'transactions.table', '=', 'tables.id')
             ->leftJoin('ordered', 'transactions.id', '=', 'ordered.tran_id')
             ->leftJoin('brands', 'menus.brand_id', '=', 'brands.id') 

@@ -12,6 +12,12 @@
                         <label for="name" class="block text-sm font-medium text-gray-900 lg:text-base">Client Name <span class="text-red-500">*</span></label>
                         <input type="text" id="name" name="name" value="{{ old('name') }}" class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 lg:text-base" autocomplete="off" required>
                         </div>
+                        <!-- LINE START 15: start of credit limit field added by ken 10-2-2026 -->
+                        <div class="w-1/2">
+                            <label for="credit_limit" class="block text-sm font-medium text-gray-900 lg:text-base">Credit Limit</label>
+                            <input type="number" id="credit_limit" name="credit_limit" value="{{ number_format((float) ($table->credit_limit ?? 0), 2, '.', '') }}" step="0.01" min="0" class="no-number-step block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 lg:text-base" autocomplete="off">
+                        </div>
+                        <!-- LINE END 20: End of credit limit field added by ken 10-2-2026 -->                        
                         {{--<div class="w-1/2 mr-2">
                             <label for="role" class="block text-sm font-medium text-gray-900 lg:text-base">Branch<span class="text-red-500">*</span></label>
                             <select id="branch" name="branch" value="{{ old('branch') }}" class="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 lg:text-base" >

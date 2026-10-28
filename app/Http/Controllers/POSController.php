@@ -1064,116 +1064,116 @@ class POSController extends Controller {
             $paymentAmount = (float) ($payment['amount'] ?? 0);
             $paymentMop = trim((string) ($payment['mop'] ?? ''));
             if ($paymentAmount > 0 && $paymentMop !== '') {
-                $this->saveMOP($tran_id, $paymentMop, $paymentAmount, $cashier, $paymentDetails, $tran->number);
+                $this->saveMOP($tran_id, $paymentMop, $paymentAmount, $cashier, $paymentDetails, $tran->number, $tran);
             }
         }
 
         if (empty($paymentAmounts) && ($cashMop > 0 || $amount == 0)){
             $mop = 'CASH';
             $amount = $cashMop;
-            $this->saveMOP($tran_id, $mop, $amount, $cashier, $paymentDetails, $tran->number);
+            $this->saveMOP($tran_id, $mop, $amount, $cashier, $paymentDetails, $tran->number, $tran);
         }
 
         if ($ccMop > 0){
             $mop = 'CREDIT CARD - MASTERCARD';
             $amount = $ccMop;
-            $this->saveMOP($tran_id, $mop, $amount, $cashier, $paymentDetails, $tran->number);
+            $this->saveMOP($tran_id, $mop, $amount, $cashier, $paymentDetails, $tran->number, $tran);
         }
 
         if ($visaMop > 0){
             $mop = 'VISA';
             $amount = $visaMop;
-            $this->saveMOP($tran_id, $mop, $amount , $cashier);
+            $this->saveMOP($tran_id, $mop, $amount, $cashier, $paymentDetails, $tran->number, $tran);
         }
 
         if ($gcashMop > 0){
             $mop = 'GCASH';
             $amount = $gcashMop;
-            $this->saveMOP($tran_id, $mop, $amount , $cashier);
+            $this->saveMOP($tran_id, $mop, $amount, $cashier, $paymentDetails, $tran->number, $tran);
         }
 
         if ($wcpMop > 0){
             $mop = 'WE CHAT PAY';
             $amount = $wcpMop;
-            $this->saveMOP($tran_id, $mop, $amount , $cashier);
+            $this->saveMOP($tran_id, $mop, $amount, $cashier, $paymentDetails, $tran->number, $tran);
         }
 
         if ($amexMop > 0){
             $mop = 'AMEX';
             $amount = $amexMop;
-            $this->saveMOP($tran_id, $mop, $amount , $cashier);
+            $this->saveMOP($tran_id, $mop, $amount, $cashier, $paymentDetails, $tran->number, $tran);
         }
 
         if ($bdoMop > 0){
             $mop = 'BDO PAY';
             $amount = $bdoMop;
-            $this->saveMOP($tran_id, $mop, $amount , $cashier);
+            $this->saveMOP($tran_id, $mop, $amount, $cashier, $paymentDetails, $tran->number, $tran);
         }
 
         if ($bancnetMop > 0){
             $mop = 'BANCNET';
             $amount = $bancnetMop;
-            $this->saveMOP($tran_id, $mop, $amount , $cashier);
+            $this->saveMOP($tran_id, $mop, $amount, $cashier, $paymentDetails, $tran->number, $tran);
         }
 
         if ($dinersMop > 0){
             $mop = 'DINERS';
             $amount = $dinersMop;
-            $this->saveMOP($tran_id, $mop, $amount , $cashier);
+            $this->saveMOP($tran_id, $mop, $amount, $cashier, $paymentDetails, $tran->number, $tran);
         }
 
         if ($dpMop > 0){
             $mop = 'DOWN PAYMENT';
             $amount = $dpMop;
-            $this->saveMOP($tran_id, $mop, $amount , $cashier);
+            $this->saveMOP($tran_id, $mop, $amount, $cashier, $paymentDetails, $tran->number, $tran);
         }
 
         if ($giftMop > 0){
             $mop = 'GIFT CERT';
             $amount = $giftMop;
-            $this->saveMOP($tran_id, $mop, $amount , $cashier);
+            $this->saveMOP($tran_id, $mop, $amount, $cashier, $paymentDetails, $tran->number, $tran);
         }
 
         if ($jcbMop > 0){
             $mop = 'JCB';
             $amount = $jcbMop;
-            $this->saveMOP($tran_id, $mop, $amount , $cashier);
+            $this->saveMOP($tran_id, $mop, $amount, $cashier, $paymentDetails, $tran->number, $tran);
         }
 
         if ($mayaMop > 0){
             $mop = 'PAYMAYA';
             $amount = $mayaMop;
-            $this->saveMOP($tran_id, $mop, $amount , $cashier);
+            $this->saveMOP($tran_id, $mop, $amount, $cashier, $paymentDetails, $tran->number, $tran);
         }
 
         if ($grabPayMop > 0){
             $mop = 'GRAB PAY';
             $amount = $grabPayMop;
-            $this->saveMOP($tran_id, $mop, $amount , $cashier);
+            $this->saveMOP($tran_id, $mop, $amount, $cashier, $paymentDetails, $tran->number, $tran);
         }
 
         if ($unionMop > 0){
             $mop = 'UNION PAY';
             $amount = $unionMop;
-            $this->saveMOP($tran_id, $mop, $amount , $cashier);
+            $this->saveMOP($tran_id, $mop, $amount, $cashier, $paymentDetails, $tran->number, $tran);
         }
 
         if ($grabMop > 0){
             $mop = 'GRAB FOOD';
             $amount = $grabMop;
-            $this->saveMOP($tran_id, $mop, $amount , $cashier);
+            $this->saveMOP($tran_id, $mop, $amount, $cashier, $paymentDetails, $tran->number, $tran);
         }
 
         if ($pandaMop > 0){
             $mop = 'FOOD PANDA';
             $amount = $pandaMop;
-            $this->saveMOP($tran_id, $mop, $amount , $cashier);
+            $this->saveMOP($tran_id, $mop, $amount, $cashier, $paymentDetails, $tran->number, $tran);
         }
 
         if ($qrphMop > 0){
             $mop = 'QR PH';
             $amount = $qrphMop;
-            $this->saveMOP($tran_id, $mop, $amount , $cashier);
+            $this->saveMOP($tran_id, $mop, $amount, $cashier, $paymentDetails, $tran->number, $tran);
         }
 
         $mopCheck = DB::table('payment_orders')->where('tran_id', $tran_id)->first();
@@ -1192,6 +1192,7 @@ class POSController extends Controller {
 
 
         $orders = DB::table('orders')->where('cashier', auth()->id())->get();
+        $menus = DB::table('menus') ->where('store_code', auth()->user()->store_code) ->get();
         foreach ($orders as $order) {
             $orderSlug = Str::random(60);
             $norderSlug = $orderSlug;
@@ -1228,12 +1229,15 @@ class POSController extends Controller {
             $total = round(($vatsales + $SCVal + $vat),2);
 
 
+            $menu = DB::table('menus')->where('id', $order->menu_id)->first();
+            $orderedUuid = (string) Str::uuid();
             $orderedId = DB::table('ordered')->insertGetId([
                 'tran_id' => null,
                 'tran_uuid' => $tran->is_uuid,
-                'is_uuid' => (string) Str::uuid(),
+                'is_uuid' => $orderedUuid,
                 'menu_id' => $order->menu_id,
                 'menu_cloud_id' => $order->menu_id,
+                'menu_uuid' => $menu->is_uuid,
                 'quantity' => $order->quantity,
                 'department' => $order->department,
                 'branch' => $order->branch,
@@ -1260,7 +1264,6 @@ class POSController extends Controller {
                 'updated_at' => date('Y-m-d h:i:s')
             ]);
 
-            $menu = DB::table('menus')->where('id', $order->menu_id)->first();
             $previousQuantity = (float) $menu->quantity;
             $remainingQuantity = $previousQuantity - (float) $order->quantity;
 
@@ -1303,6 +1306,8 @@ class POSController extends Controller {
                     ->where('id', $order->menu_id)
                     ->decrement('quantity', $order->quantity);
             }
+
+            $this->recordPosCogs($tran, (int) $order->menu_id, (int) $order->quantity, $orderedUuid);
 
             DB::table('orders')->where('id', $order->id)->delete();
         }
@@ -1533,9 +1538,12 @@ class POSController extends Controller {
         // Batch insert to reduce query count and avoid slow per-row operations
         $orders = DB::table('orders')->where('cashier', $cashierId)->get();
         $orderedInserts = [];
+        $cogsAllocations = [];
 
         foreach ($orders as $order) {
             $orderSlug = (string) Str::uuid();
+            $orderedUuid = (string) Str::uuid();
+            $menu = DB::table('menus')->where('id', $order->menu_id)->first();
 
             $SCPercent = $SCRow->percent ?? 0;
             $subtotal = $order->total_price;
@@ -1551,9 +1559,10 @@ class POSController extends Controller {
             $orderedInserts[] = [
                 'tran_id' => null,
                 'tran_uuid' => $tran->is_uuid,
-                'is_uuid' => (string) Str::uuid(),
+                'is_uuid' => $orderedUuid,
                 'menu_id' => $order->menu_id,
                 'menu_cloud_id' => $order->menu_id,
+                'menu_uuid' => $menu->is_uuid,
                 'quantity' => $order->quantity,
                 'amount' => $order->total_price,
                 'price_type' => $order->price_type,
@@ -1580,7 +1589,11 @@ class POSController extends Controller {
                 'updated_at' => now(),
             ];
 
-            $menu = DB::table('menus')->where('id', $order->menu_id)->first();
+            $cogsAllocations[] = [
+                'menu_id' => (int) $order->menu_id,
+                'quantity' => (int) $order->quantity,
+                'ordered_uuid' => $orderedUuid,
+            ];
 
             if ($menu && $menu->is_combo == 1) {
                 $ings = DB::table('ingredients')->where('menu_id', $menu->id)->get();
@@ -1595,6 +1608,15 @@ class POSController extends Controller {
 
         if (!empty($orderedInserts)) {
             DB::table('ordered')->insert($orderedInserts);
+        }
+
+        foreach ($cogsAllocations as $allocation) {
+            $this->recordPosCogs(
+                $tran,
+                $allocation['menu_id'],
+                $allocation['quantity'],
+                $allocation['ordered_uuid']
+            );
         }
 
         DB::table('orders')->where('cashier', $cashierId)->delete();
@@ -2080,7 +2102,76 @@ class POSController extends Controller {
         return $prefix . $datePart . str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
     }
 
-    public function saveMOP($tran_id, $mop, $amount, $cashier, array $details = [], $tranNumber = null){
+    private function recordPosCogs(object $transaction, int $menuId, int $quantity, string $orderedUuid): void
+    {
+        $quantityRemaining = max(0, $quantity);
+        if ($quantityRemaining === 0) {
+            return;
+        }
+
+        $storeCode = auth()->user()->store_code;
+        $branchCode = $transaction->branch_code ?? auth()->user()->branch_code ?? DB::table('settings')
+            ->where('store_code', $storeCode)
+            ->value('branch_code');
+
+        DB::transaction(function () use (
+            $transaction,
+            $menuId,
+            $quantityRemaining,
+            $orderedUuid,
+            $storeCode,
+            $branchCode
+        ) {
+            $purchaseLots = DB::table('purchase_ordered')
+                ->where('menu_id', $menuId)
+                ->where('store_code', $storeCode)
+                ->where('remaining_stocks', '>', 0)
+                ->orderBy('id', 'asc')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($purchaseLots as $purchaseLot) {
+                if ($quantityRemaining <= 0) {
+                    break;
+                }
+
+                $allocatedQuantity = min($quantityRemaining, (int) $purchaseLot->remaining_stocks);
+                if ($allocatedQuantity <= 0) {
+                    continue;
+                }
+
+                $remainingStocks = (int) $purchaseLot->remaining_stocks - $allocatedQuantity;
+                DB::table('purchase_ordered')
+                    ->where('id', $purchaseLot->id)
+                    ->update([
+                        'remaining_stocks' => $remainingStocks,
+                        'updated_at' => now(),
+                    ]);
+
+                $poPrice = (float) $purchaseLot->price;
+                DB::table('ordered_cogs')->insert([
+                    'tran_local_id' => (string) ($transaction->local_id ?? $transaction->id),
+                    'tran_uuid' => $transaction->is_uuid,
+                    'menu_id' => $menuId,
+                    'ordered_uuid' => $orderedUuid,
+                    'po_id' => $purchaseLot->id,
+                    'si_number' => $purchaseLot->sales_invoice,
+                    'quantity' => $allocatedQuantity,
+                    'po_price' => $poPrice,
+                    'po_total' => $allocatedQuantity * $poPrice,
+                    'status' => 'SALES',
+                    'store_code' => $storeCode,
+                    'branch_code' => $branchCode,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                $quantityRemaining -= $allocatedQuantity;
+            }
+        });
+    }
+
+    public function saveMOP($tran_id, $mop, $amount, $cashier, array $details, $tranNumber, Transaction $tran) {
         DB::table('payment_orders')->insert([
             'tran_id' => $tran_id,
             'mop' => $mop,
@@ -2098,6 +2189,7 @@ class POSController extends Controller {
         DB::table('payment_logs')->insert([
             'tran_id' => $tran_id,
             'tran_number' => $tranNumber,
+            'tran_uuid' => $tran->is_uuid,
             'mop_id' => $paymentMethod->id ?? null,
             'label' => $mop,
             'total' => $amount,

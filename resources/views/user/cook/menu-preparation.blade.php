@@ -636,25 +636,19 @@
                                     </button>
                                 </form>
                             @endif
-
+                            <!-- LINE START 639: START OF GENERATE ITEM C0DE BY KEN 10-26-26 -->
                             @if (!$hasItemCodes)
                                 <form action="{{ route('menus.generateItemCode') }}" method="POST" class="flex-shrink-0">
                                     @csrf
                                     <button type="submit"
                                         class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-2 focus:ring-blue-300
                                             font-semibold rounded-lg text-xs px-3 py-1.5 whitespace-nowrap"
-                                        onclick="return confirm('Generate item codes for all branches and stores?')">
+                                        onclick="return confirm('Fill missing item codes and share them across matching branches and stores?')">
                                         Generate Item Codes
                                     </button>
                                 </form>
-                            @else
-                                <button type="button"
-                                    class="text-white bg-gray-500 cursor-not-allowed
-                                        font-semibold rounded-lg text-xs px-3 py-1.5 whitespace-nowrap"
-                                    disabled>
-                                    Item Codes Generated
-                                </button>
                             @endif
+                            <!-- LINE END 651: START OF GENERATE ITEM C0DE BY KEN 10-26-26 -->
                         @endif
 
                         {{-- Refresh Button --}}

@@ -858,6 +858,43 @@ class MenuController extends Controller {
             // Get category name for brand_code generation
             $categoryName = DB::table('menu_categories')->where('id', $request->category_id)->value('name');
 
+            $activeMenus = Menu::where('is_deleted', 0)
+                ->select('id', 'name', 'item_code')
+                ->orderBy('id')
+                ->get();
+            $usedItemCodes = $activeMenus
+                ->pluck('item_code')
+                ->filter(function ($code) {
+                    return trim((string) $code) !== '';
+                })
+                ->mapWithKeys(function ($code) {
+                    return [(string) $code => true];
+                })
+                ->all();
+            $existingFamilyItemCode = $this->findFamilyItemCode($request->name, $activeMenus);
+            $itemCode = $existingFamilyItemCode;
+            if ($itemCode === null) {
+                $itemCode = trim((string) $request->input('item_code'));
+            }
+            if ($itemCode === '') {
+                $itemCode = $this->makeItemCode(
+                    $this->normalizeItemName($request->name),
+                    $usedItemCodes
+                );
+            }
+            if ($existingFamilyItemCode !== null) {
+                foreach ($activeMenus as $activeMenu) {
+                    if ($this->areRelatedItemNames(
+                        $this->normalizeItemName($request->name),
+                        $this->normalizeItemName($activeMenu->name)
+                    )) {
+                        Menu::where('id', $activeMenu->id)->update([
+                            'item_code' => $existingFamilyItemCode,
+                        ]);
+                    }
+                }
+            }
+
             // Create item for each branch (store)
             foreach ($branches as $branch) {
                 $branchStoreCode = $branch->store_code;
@@ -866,7 +903,7 @@ class MenuController extends Controller {
                 foreach ($selectedBrandIds as $brandId) {
                     // Check if menu already exists for this brand and branch
                     $exists = DB::table('menus')
-                        ->where('name', $request->name)
+                        ->whereRaw('LOWER(TRIM(name)) = ?', [Str::lower(trim($request->name))])
                         ->where('brand_id', $brandId)
                         ->where('store_code', $branchStoreCode) // Use branch store_code
                         ->where('is_deleted', 0)
@@ -923,7 +960,7 @@ class MenuController extends Controller {
                             'category_id' => $request->category_id,
                             'department' => $request->department,
                             'brand_id' => $brandId,
-                            'item_code' => $request->item_code,
+                            'item_code' => $itemCode,
                             'barcode' => $request->barcode,
                             'price' => $price,
                             'wholesale_price' => $wholesale,
@@ -961,6 +998,26 @@ class MenuController extends Controller {
             return back()->with('error', 'Failed to create item: ' . $e->getMessage());
         }
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     public function edit($slug) {
         
@@ -1001,15 +1058,33 @@ class MenuController extends Controller {
 
         // Get ALL menu items across brands that share the same name and category
         // (do not restrict by branch_code so we can surface brand-specific codes from other branches)
-        $menuItemsByBrand = DB::table('menus')
-            ->where('store_code', Auth::user()->store_code)
-            ->where('is_deleted', 0)
-            ->where('name', $item->name)
-            ->where('category_id', $item->category_id)
-            ->get()
-            ->keyBy('brand_id');
-
-
+        // $menuItemsByBrand = DB::table('menus')
+        //     ->where('store_code', Auth::user()->store_code)
+        //     ->where('is_deleted', 0)
+        //     ->where('name', $item->name)
+        //     ->where('category_id', $item->category_id)
+        //     ->get()
+        //     ->keyBy('brand_id');
+        // LINE 1031: Start of update by ken 10-21-2026
+        if ($item->item_code !== null && $item->item_code !== '') {
+            $menuItemsByBrand = DB::table('menus')
+                ->where('store_code', Auth::user()->store_code)
+                ->where('is_deleted', 0)
+                ->where('item_code', $item->item_code)
+                ->get()
+                ->keyBy('brand_id');
+        } else {
+            $menuItemsByBrand = DB::table('menus')
+                ->where('store_code', Auth::user()->store_code)
+                ->where('is_deleted', 0)
+                ->where('name', $item->name)
+                ->where(function ($q) {
+                    $q->whereNull('item_code')->orWhere('item_code', '');
+                })
+                ->get()
+                ->keyBy('brand_id');
+        }
+        // LINE 1050: End of update by ken 10-21-2026
         $brandCodeLookup = DB::table('menus')
             ->join('menu_categories', 'menus.category_id', '=', 'menu_categories.id')
             ->join('brands', 'menus.brand_id', '=', 'brands.id')
@@ -1058,7 +1133,6 @@ class MenuController extends Controller {
 
     public function update(Request $request)
     {
-
         
         // Check if slug exists
         if (!$request->has('slug')) {
@@ -1136,6 +1210,7 @@ class MenuController extends Controller {
                 
                 $menuID = $originalItem->id;
                 $originalBrandId = $originalItem->brand_id;
+                $originalItemCode = $originalItem->item_code; // LINE 1176: Added by ken 10-21-26
 
                 // Get the category name for matching
                 $categoryName = DB::table('menu_categories')->where('id', $category_id)->value('name');
@@ -1152,7 +1227,17 @@ class MenuController extends Controller {
                 $brandsUpdated = 0;
                 $brandsDeleted = 0;
                 $brandsSkipped = 0;
-
+                // START LINE 1193: Start of Update query by ken 1-21-26
+                $currentStoreCode = Auth::user()->store_code;
+                $targetStoreCodes = DB::table('users')
+                    ->whereNotNull('store_code')
+                    ->where('store_code', '!=', '')
+                    ->where('store_code', '!=', $currentStoreCode)
+                    ->distinct()
+                    ->pluck('store_code')
+                    ->values()
+                    ->all();
+                // END LINE 1203: End of 
                 foreach ($allBrands as $brand) {
 
                     $updateKey = "update_branch_{$brand->id}";
@@ -1290,6 +1375,90 @@ class MenuController extends Controller {
                                 $menuID = $newMenuId;
                             }
                         }
+                    // START LINE 1330: Start of added query by ken 10-21-2026
+                        $propagateData = [
+                            'is_deleted' => 0,
+                            'category_id' => $category_id,
+                            'price' => $price,
+                            'wholesale_price' => $wholesale,
+                            'slab_price' => $slab,
+                            'retail_price' => $retail,
+                            'grab_price' => $request->grab ?? 0,
+                            'panda_price' => $request->panda ?? 0,
+                            'servings' => $servings,
+                            'is_combo' => $combo,
+                            'info' => $info,
+                            'is_hidden' => $hidden,
+                            'is_discount' => $isDiscount,
+                            'food_cost' => $foodCost,
+                            'department' => $department,
+                            'barcode' => $brandBarcode,
+                            'item_code' => $brandItemCode,
+                            'brand_code' => $brandCode,
+                            'updated_at' => now(),
+                        ];
+
+                        $matchItemCode = $originalItemCode;
+
+                        foreach ($targetStoreCodes as $targetStoreCode) {
+                            // Match the item across branches STRICTLY by ITEM CODE.
+                            // - item_code matches     -> sync the update onto that item
+                            // - item_code does not match, or the item has no item_code
+                            //   -> do NOT sync the update; add the item to that branch instead
+                            if ($matchItemCode !== null && $matchItemCode !== '') {
+                                $propagatedItem = DB::table('menus')
+                                    ->where('store_code', $targetStoreCode)
+                                    ->where('brand_id', $brand->id)
+                                    ->where('item_code', $matchItemCode)
+                                    ->first();
+
+                                if ($propagatedItem) {
+                                    // ITEM CODE MATCHED -> sync shared fields only;
+                                    // keep each branch's own name, stock and reorder point
+                                    DB::table('menus')->where('id', $propagatedItem->id)->update($propagateData);
+                                    continue;
+                                }
+                            } else {
+                                // No item_code -> never sync. Only add if the item is not
+                                // already present in this branch, to avoid duplicates.
+                                $alreadyExists = DB::table('menus')
+                                    ->where('store_code', $targetStoreCode)
+                                    ->where('brand_id', $brand->id)
+                                    ->where('name', $originalItem->name)
+                                    ->where('is_deleted', 0)
+                                    ->where(function ($q) {
+                                        $q->whereNull('item_code')->orWhere('item_code', '');
+                                    })
+                                    ->exists();
+
+                                if ($alreadyExists) {
+                                    continue;
+                                }
+                            }
+
+                            // ITEM CODE DID NOT MATCH or item has NO ITEM CODE -> add the item here
+                            $targetItemName = $name;
+
+                            $newSlug = Str::random(60);
+                            while (DB::table('menus')->where('slug', $newSlug)->exists()) {
+                                $newSlug = Str::random(60);
+                            }
+
+                            DB::table('menus')->insert(array_merge($propagateData, [
+                                'name' => $targetItemName,
+                                'brand_id' => $brand->id,
+                                'branch_id' => $originalItem->branch_id,
+                                'store_code' => $targetStoreCode,
+                                'branch_code' => $targetItemName . '-' . $targetStoreCode,
+                                'quantity' => 0,
+                                'current_quantity' => 0,
+                                'reorder_point' => 0,
+                                'slug' => $newSlug,
+                                'is_uuid' => Str::uuid(),
+                                'created_at' => now(),
+                            ]));
+                        }                    
+                    // END LINE: 1332: End of added query by ken 10-21-2026
                     } else {
                         // UNCHECKED → SOFT DELETE
                         if ($existingMenuItem) {
@@ -3542,18 +3711,36 @@ class MenuController extends Controller {
 
         return response()->json($brands);
     }
-
+// LINE START 3714: START OF ITEM CODE QUERY ADDED BY KEN 10-26-26
     private function itemCodesGenerated(): bool
     {
-        $activeMenus = Menu::where('is_deleted', 0);
+        $menus = Menu::where('is_deleted', 0)
+            ->select('name', 'item_code')
+            ->orderBy('id')
+            ->get();
 
-        return $activeMenus->exists()
-            && !Menu::where('is_deleted', 0)
-                ->where(function ($query) {
-                    $query->whereNull('item_code')
-                        ->orWhere('item_code', '');
-                })
-                ->exists();
+        if ($menus->isEmpty()) {
+            return false;
+        }
+
+        foreach ($menus as $index => $menu) {
+            $itemCode = trim((string) $menu->item_code);
+            if ($itemCode === '') {
+                return false;
+            }
+
+            for ($nextIndex = $index + 1; $nextIndex < $menus->count(); $nextIndex++) {
+                $nextMenu = $menus[$nextIndex];
+                if ($this->areRelatedItemNames(
+                    $this->normalizeItemName($menu->name),
+                    $this->normalizeItemName($nextMenu->name)
+                ) && $itemCode !== trim((string) $nextMenu->item_code)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     private function normalizeItemName(?string $name): string
@@ -3591,27 +3778,120 @@ class MenuController extends Controller {
         return $code;
     }
 
+    private function areRelatedItemNames(string $left, string $right): bool
+    {
+        if ($left === $right) {
+            return true;
+        }
+
+        return str_starts_with($left, $right . ' ')
+            || str_starts_with($right, $left . ' ');
+    }
+
+    private function findFamilyItemCode(string $name, $menus): ?string
+    {
+        $normalizedName = $this->normalizeItemName($name);
+        $matchingCodes = [];
+
+        foreach ($menus as $menu) {
+            $menuName = $this->normalizeItemName($menu->name);
+            if ($this->areRelatedItemNames($normalizedName, $menuName)) {
+                $code = trim((string) $menu->item_code);
+                if ($code !== '' && !in_array($code, $matchingCodes, true)) {
+                    $matchingCodes[] = $code;
+                }
+            }
+        }
+
+        if (count($matchingCodes) > 1) {
+            \Log::warning('Conflicting item codes found for item family; using the first code.', [
+                'item_name' => $name,
+                'codes' => $matchingCodes,
+            ]);
+        }
+
+        return $matchingCodes[0] ?? null;
+    }
+
     public function genItemCode()
     {
         try {
             DB::transaction(function () {
                 $menus = Menu::where('is_deleted', 0)
-                    ->select('id', 'name')
+                    ->select('id', 'name', 'item_code')
                     ->orderBy('id')
                     ->get();
-                $usedCodes = [];
+                $usedCodes = $menus
+                    ->pluck('item_code')
+                    ->filter(function ($code) {
+                        return trim((string) $code) !== '';
+                    })
+                    ->mapWithKeys(function ($code) {
+                        return [(string) $code => true];
+                    })
+                    ->all();
+                $families = [];
 
-                foreach ($menus->groupBy(function ($menu) {
-                    return $this->normalizeItemName($menu->name);
-                }) as $group) {
-                    $code = $this->makeItemCode(
-                        $this->normalizeItemName($group->first()->name),
-                        $usedCodes
-                    );
+                foreach ($menus as $menu) {
+                    $normalizedName = $this->normalizeItemName($menu->name);
+                    $matchingFamilyIndexes = [];
 
-                    Menu::whereIn('id', $group->pluck('id'))->update([
-                        'item_code' => $code,
-                    ]);
+                    foreach ($families as $index => $family) {
+                        foreach ($family['names'] as $familyName) {
+                            if ($this->areRelatedItemNames($normalizedName, $familyName)) {
+                                $matchingFamilyIndexes[] = $index;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (count($matchingFamilyIndexes) === 0) {
+                        $families[] = [
+                            'names' => [$normalizedName],
+                            'ids' => [$menu->id],
+                            'codes' => trim((string) $menu->item_code) === ''
+                                ? []
+                                : [trim((string) $menu->item_code)],
+                        ];
+                        continue;
+                    }
+
+                    $targetIndex = $matchingFamilyIndexes[0];
+                    $families[$targetIndex]['names'][] = $normalizedName;
+                    $families[$targetIndex]['ids'][] = $menu->id;
+                    $menuCode = trim((string) $menu->item_code);
+                    if ($menuCode !== '') {
+                        $families[$targetIndex]['codes'][] = $menuCode;
+                    }
+
+                    foreach (array_reverse(array_slice($matchingFamilyIndexes, 1)) as $mergeIndex) {
+                        $families[$targetIndex]['names'] = array_merge(
+                            $families[$targetIndex]['names'],
+                            $families[$mergeIndex]['names']
+                        );
+                        $families[$targetIndex]['ids'] = array_merge(
+                            $families[$targetIndex]['ids'],
+                            $families[$mergeIndex]['ids']
+                        );
+                        $families[$targetIndex]['codes'] = array_merge(
+                            $families[$targetIndex]['codes'],
+                            $families[$mergeIndex]['codes']
+                        );
+                        array_splice($families, $mergeIndex, 1);
+                    }
+                }
+
+                foreach ($families as $family) {
+                    $codes = array_values(array_unique($family['codes']));
+                    if (count($codes) > 1) {
+                        \Log::warning('Conflicting item codes found during generation; using the first code.', [
+                            'menu_ids' => $family['ids'],
+                            'codes' => $codes,
+                        ]);
+                    }
+
+                    $code = $codes[0] ?? $this->makeItemCode($family['names'][0], $usedCodes);
+                    Menu::whereIn('id', $family['ids'])->update(['item_code' => $code]);
                 }
             });
         } catch (\Throwable $exception) {
@@ -3620,6 +3900,7 @@ class MenuController extends Controller {
             return back()->with('error', 'Item codes could not be generated. Please try again.');
         }
 
-        return back()->with('success', 'Item codes generated successfully for all branches and stores.');
+        return back()->with('success', 'Item codes were filled and shared across matching branches and stores.');
     }    
+// LINE END 3905: START OF ITEM CODE QUERY ADDED BY KEN 10-26-26
 }

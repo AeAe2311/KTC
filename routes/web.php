@@ -67,6 +67,7 @@ use App\Http\Controllers\ChartOfAccountsController; //LINE 63: NEW ADDED BY KEN 
 use App\Http\Controllers\AccountingReportController; // LINE 64: NEW ADDED BY KEN 07-29-2026
 use App\Http\Controllers\TrialBalanceController; // LINE 68: NEW ADDED BY KEN 07-29-2026
 use App\Http\Controllers\SaveSaleReportController; // LINE 69: NEW ADDED BY KEN 10-22-2026
+use App\Http\Controllers\PaymentCollectController; // LINE 70: NEW ADDED BY KEN 10-29-2026
 
 use App\Http\Middleware\ValidateRole;
 use App\Models\Transaction;
@@ -568,9 +569,10 @@ Route::middleware("role:1,2,3,4,5,6,8,9")->group(function(){
         // Add Stock (Create Purchase Order)
         Route::get('/inventory/add-stock', [AddStockController::class, 'create'])->name('stock.add');
         Route::post('/inventory/add-stock/store', [AddStockController::class, 'store'])->name('stock.store');
+        Route::post('/inventory/add-stock/cart', [AddStockController::class, 'syncCart'])->name('stock.cart.sync');
         // AJAX: Get menus by brand
         Route::get('/inventory/add-stock/menus-by-brand/{brandId}', [AddStockController::class, 'getMenusByBrand'])->name('stock.menus-by-brand');
-        // Branch Transfer 20260528001 JET START LINES 560 - 575
+        // START LINE 574: Branch Transfer 20260528001 JET START LINES 574 - 590
         Route::get('/inventory/branch-transfer', [BranchTransferController::class, 'create'])->name('branch-transfer.add');
         Route::post('/inventory/branch-transfer/store', [BranchTransferController::class, 'store'])->name('branch-transfer.store');
         Route::get('/inventory/branch-transfer/menus-by-brand/{brandId}', [BranchTransferController::class, 'getMenusByBrand'])->name('branch-transfer.menus-by-brand');
@@ -586,7 +588,7 @@ Route::middleware("role:1,2,3,4,5,6,8,9")->group(function(){
         Route::post('/inventory/location-transfer/received/checking/{id}/json', [BranchTransferController::class, 'markReceivedTransferChecking'])->name('branch-transfer.received.checking.json');
         Route::post('/inventory/location-transfer/received/cancel-checking/{id}/json', [BranchTransferController::class, 'cancelReceivedTransferChecking'])->name('branch-transfer.received.cancel-checking.json');
         Route::post('/inventory/location-transfer/received/confirm/{id}/json', [BranchTransferController::class, 'confirmReceivedTransfer'])->name('branch-transfer.received.confirm.json'); 
-        //20260528001 JET END
+        // END LINE 590: 20260528001 JET END
         // Main approval page
         Route::get('/inventory/pending-purchase-orders', [AddStockController::class, 'pendingApproval'])->name('pending.purchase.orders.index');
 
@@ -742,6 +744,7 @@ Route::middleware('role:1,2,3,4,5,6,8,9')->group(function(){
         Route::post('/chart-category/store', [ChartOfAccountsController::class, 'storeChartCategory'])->name('chart-category.store');
         Route::post('/chart-category/update', [ChartOfAccountsController::class, 'updateChartCategory'])->name('chart-category.update');
         Route::get('/chart-category/delete/{id}', [ChartOfAccountsController::class, 'deleteChartCategory'])->name('chart-category.delete');
+        Route::post('/chart-category/formula', [ChartOfAccountsController::class, 'saveChartCategoryFormula'])->name('chart-category.formula');
 
         // Industry
         Route::post('/industry/store', [ChartOfAccountsController::class, 'storeIndustry'])->name('industry.store');
@@ -1017,6 +1020,18 @@ Route::middleware('role:1,5,6,2,7,8,9,3')->group(function(){
             Route::post('/save-counts', [CashTurnoverApprovalController::class, 'saveCounts'])->name('save-counts');
         });
     });
+
+    // Sale Payment page + data endpoint
+    Route::get('/admin/accounting-reports/sale-payment', [PaymentCollectController::class, 'salePaymentPage'])
+        ->name('admin.accounting-reports.sale-payment');
+    Route::get('/admin/accounting-reports/sale-payment/data', [PaymentCollectController::class, 'salePayment'])
+        ->name('admin.accounting-reports.sale-payment.data');
+
+    // AR Collection page + data endpoint
+    Route::get('/admin/accounting-reports/ar-collection', [PaymentCollectController::class, 'arCollectionPage'])
+        ->name('admin.accounting-reports.ar-collection');
+    Route::get('/admin/accounting-reports/ar-collection/data', [PaymentCollectController::class, 'arCollection'])
+        ->name('admin.accounting-reports.ar-collection.data');  
 });
 
 Route::view('error', 'error');

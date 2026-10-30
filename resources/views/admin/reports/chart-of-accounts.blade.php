@@ -597,6 +597,7 @@
                                 <thead class="bg-gray-50">
                                     <tr>
                                         <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Chart Category Name</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Formula</th>
                                         <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Actions</th>
                                     </tr>
                                 </thead>
@@ -604,14 +605,16 @@
                                     @forelse($chartCategories as $chartCategory)
                                         <tr>
                                             <td class="px-4 py-3 text-sm text-gray-700">{{ $chartCategory->name }}</td>
+                                            <td class="px-4 py-3 text-sm text-gray-700">{{ $chartCategory->com_formula ?: 'Not set' }}</td>
                                             <td class="px-4 py-3 text-right text-sm font-medium">
+                                                <button type="button" class="mr-2 text-indigo-600 hover:text-indigo-800 chart-category-formula-button" data-category-id="{{ $chartCategory->id }}" data-category-name="{{ $chartCategory->name }}" data-formula="{{ $chartCategory->com_formula ?? '' }}">{{ $chartCategory->com_formula ? 'Edit Formula' : 'Set Formula' }}</button>
                                                 <button type="button" class="mr-2 text-blue-600 hover:text-blue-800 edit-action-button" data-edit-type="chartCategory" data-edit-slug="{{ $chartCategory->id }}" data-edit-name="{{ $chartCategory->name }}">Edit</button>
                                                 <button type="button" class="text-red-600 hover:text-red-800 delete-action-button" data-delete-url="{{ route('report.chart-of-accounts.chart-category.delete', $chartCategory->id) }}" data-delete-name="{{ $chartCategory->name }}" data-delete-type="Chart Category">Delete</button>
                                             </td>
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="2" class="px-4 py-6 text-center text-sm text-gray-500">No chart categories defined yet.</td>
+                                            <td colspan="3" class="px-4 py-6 text-center text-sm text-gray-500">No chart categories defined yet.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
@@ -988,6 +991,45 @@
                     <div class="flex justify-end gap-3">
                         <button type="button" class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" onclick="closeAddChartCategoryModal()">Cancel</button>
                         <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Add Chart Category</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Chart Category Formula Modal -->
+    <div id="chartCategoryFormulaModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 px-4 py-6">
+        <div class="w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
+            <div class="mb-3 flex items-center justify-between">
+                <div>
+                    <h3 class="text-base font-semibold text-gray-900">Chart Category Formula</h3>
+                    <p id="chartCategoryFormulaName" class="mt-1 text-xs text-gray-500"></p>
+                </div>
+                <button type="button" class="text-xl leading-none text-gray-500 hover:text-gray-700" onclick="closeChartCategoryFormulaModal()" aria-label="Close">×</button>
+            </div>
+            <form action="{{ route('report.chart-of-accounts.chart-category.formula') }}" method="POST" id="chartCategoryFormulaForm">
+                @csrf
+                <input type="hidden" name="chart_category_id" id="chartCategoryFormulaId">
+                <input type="hidden" name="com_formula" id="chartCategoryFormulaValue">
+                <div class="space-y-3">
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" data-formula-token="DEBIT" class="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50">DEBIT</button>
+                        <button type="button" data-formula-token="CREDIT" class="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50">CREDIT</button>
+                        <button type="button" data-formula-token="BEGINNING" class="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50">BEGINNING</button>
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="button" data-formula-operator="+" class="rounded-md border border-gray-300 px-3 py-1 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50">+</button>
+                        <button type="button" data-formula-operator="-" class="rounded-md border border-gray-300 px-3 py-1 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50">-</button>
+                        <button type="button" id="removeFormulaPart" class="ml-auto rounded-md border border-gray-300 px-3 py-1 text-sm text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50">Undo</button>
+                        <button type="button" id="clearFormula" class="rounded-md border border-gray-300 px-3 py-1 text-sm text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50">Clear</button>
+                    </div>
+                    <div>
+                        <p class="mb-1 text-xs font-medium text-gray-500">Computation</p>
+                        <div id="chartCategoryFormulaPreview" class="min-h-10 rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-800" aria-live="polite"></div>
+                    </div>
+                    <div class="flex justify-end gap-2 pt-1">
+                        <button type="button" class="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50" onclick="closeChartCategoryFormulaModal()">Cancel</button>
+                        <button type="submit" id="saveChartCategoryFormula" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">Save Formula</button>
                     </div>
                 </div>
             </form>
@@ -1695,6 +1737,41 @@
             document.getElementById('addChartCategoryModal').classList.add('hidden');
         }
 
+        let chartCategoryFormulaParts = [];
+
+        function renderChartCategoryFormula() {
+            const formula = chartCategoryFormulaParts.join(' ');
+            const lastPart = chartCategoryFormulaParts[chartCategoryFormulaParts.length - 1];
+            const needsOperand = !chartCategoryFormulaParts.length || lastPart === '+' || lastPart === '-';
+
+            document.getElementById('chartCategoryFormulaPreview').textContent = formula || 'Click a term to begin.';
+            document.getElementById('chartCategoryFormulaValue').value = formula;
+            document.getElementById('saveChartCategoryFormula').disabled = needsOperand;
+
+            document.querySelectorAll('[data-formula-token]').forEach(button => {
+                button.disabled = !needsOperand;
+            });
+            document.querySelectorAll('[data-formula-operator]').forEach(button => {
+                button.disabled = needsOperand;
+            });
+            document.getElementById('removeFormulaPart').disabled = !chartCategoryFormulaParts.length;
+            document.getElementById('clearFormula').disabled = !chartCategoryFormulaParts.length;
+        }
+
+        function openChartCategoryFormulaModal(categoryId, categoryName, formula) {
+            document.getElementById('chartCategoryFormulaId').value = categoryId;
+            document.getElementById('chartCategoryFormulaName').textContent = categoryName;
+            chartCategoryFormulaParts = formula ? formula.trim().split(/\s*([+-])\s*/) : [];
+            renderChartCategoryFormula();
+            document.getElementById('chartCategoryFormulaModal').classList.remove('hidden');
+            document.getElementById('chartCategoryFormulaModal').classList.add('flex');
+        }
+
+        function closeChartCategoryFormulaModal() {
+            document.getElementById('chartCategoryFormulaModal').classList.remove('flex');
+            document.getElementById('chartCategoryFormulaModal').classList.add('hidden');
+        }
+
         function openAddAccountCodeModal() {
             document.getElementById('addAccountCodeForm').reset();
             document.getElementById('addAccountCodeModal').classList.remove('hidden');
@@ -1925,6 +2002,50 @@
             });
         });
 
+        document.querySelectorAll('.chart-category-formula-button').forEach(button => {
+            button.addEventListener('click', function() {
+                openChartCategoryFormulaModal(
+                    this.dataset.categoryId,
+                    this.dataset.categoryName,
+                    this.dataset.formula
+                );
+            });
+        });
+
+        document.querySelectorAll('[data-formula-token]').forEach(button => {
+            button.addEventListener('click', function() {
+                const lastPart = chartCategoryFormulaParts[chartCategoryFormulaParts.length - 1];
+                if (!chartCategoryFormulaParts.length || lastPart === '+' || lastPart === '-') {
+                    chartCategoryFormulaParts.push(this.dataset.formulaToken);
+                    renderChartCategoryFormula();
+                }
+            });
+        });
+
+        document.querySelectorAll('[data-formula-operator]').forEach(button => {
+            button.addEventListener('click', function() {
+                const lastPart = chartCategoryFormulaParts[chartCategoryFormulaParts.length - 1];
+                if (chartCategoryFormulaParts.length && lastPart !== '+' && lastPart !== '-') {
+                    chartCategoryFormulaParts.push(this.dataset.formulaOperator);
+                    renderChartCategoryFormula();
+                }
+            });
+        });
+
+        document.getElementById('removeFormulaPart').addEventListener('click', function() {
+            chartCategoryFormulaParts.pop();
+            renderChartCategoryFormula();
+        });
+
+        document.getElementById('clearFormula').addEventListener('click', function() {
+            chartCategoryFormulaParts = [];
+            renderChartCategoryFormula();
+        });
+
+        document.getElementById('chartCategoryFormulaModal').addEventListener('click', function(e) {
+            if (e.target === this) closeChartCategoryFormulaModal();
+        });
+
         // Delete modal close handlers
         document.getElementById('deleteModal').addEventListener('click', function(e) {
             if (e.target === this) closeDeleteModal();
@@ -1936,6 +2057,8 @@
                 if (!deleteModal.classList.contains('hidden')) closeDeleteModal();
                 const editModal = document.getElementById('editModal');
                 if (!editModal.classList.contains('hidden')) closeEditModal();
+                const formulaModal = document.getElementById('chartCategoryFormulaModal');
+                if (!formulaModal.classList.contains('hidden')) closeChartCategoryFormulaModal();
             }
         });
     </script>

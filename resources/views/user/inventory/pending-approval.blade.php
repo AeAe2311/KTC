@@ -546,8 +546,26 @@
     function makeFieldsEditable(editable) {
         const quantityInputs = document.querySelectorAll('.qty-input');
         const priceInputs = document.querySelectorAll('.price-input');
+        const priceTypeInputs = document.querySelectorAll('.price-type-input');
+        const sellPriceInputs = document.querySelectorAll('.sell-price-input');
         
         quantityInputs.forEach(input => {
+            input.readOnly = !editable;
+            input.classList.toggle('bg-white', editable);
+            input.classList.toggle('bg-gray-50', !editable);
+            input.classList.toggle('border-blue-300', editable);
+            input.classList.toggle('border-gray-200', !editable);
+        });
+
+        priceTypeInputs.forEach(input => {
+            input.disabled = !editable;
+            input.classList.toggle('bg-white', editable);
+            input.classList.toggle('bg-gray-50', !editable);
+            input.classList.toggle('border-blue-300', editable);
+            input.classList.toggle('border-gray-200', !editable);
+        });
+
+        sellPriceInputs.forEach(input => {
             input.readOnly = !editable;
             input.classList.toggle('bg-white', editable);
             input.classList.toggle('bg-gray-50', !editable);
@@ -592,13 +610,20 @@
             const originalPrice = row.dataset.originalPrice;
             const qtyInput = row.querySelector('.qty-input');
             const priceInput = row.querySelector('.price-input');
-            const lineTotal = row.querySelector('.line-total');
+            const priceTypeInput = row.querySelector('.price-type-input');
+            const sellPriceInput = row.querySelector('.sell-price-input');
             
             if (qtyInput && originalQty) {
                 qtyInput.value = parseFloat(originalQty).toFixed(3);
             }
             if (priceInput && originalPrice) {
                 priceInput.value = parseFloat(originalPrice).toFixed(2);
+            }
+            if (priceTypeInput) {
+                priceTypeInput.value = row.dataset.originalPriceType || 'wholesale';
+            }
+            if (sellPriceInput) {
+                sellPriceInput.value = row.dataset.originalSellPrice || '';
             }
             updateLineTotal(row);
         });
@@ -669,6 +694,8 @@
             const menuId = row.dataset.menuId;
             const qtyInput = row.querySelector('.qty-input');
             const priceInput = row.querySelector('.price-input');
+            const priceTypeInput = row.querySelector('.price-type-input');
+            const sellPriceInput = row.querySelector('.sell-price-input');
             const unitSpan = row.querySelector('.unit-display');
             
             if (menuId && qtyInput && priceInput) {
@@ -676,6 +703,10 @@
                     menu_id: parseInt(menuId),
                     quantity: parseFloat(qtyInput.value) || 0,
                     price: parseFloat(priceInput.value) || 0,
+                    price_type: priceTypeInput ? priceTypeInput.value : null,
+                    sell_price: sellPriceInput && sellPriceInput.value !== ''
+                        ? parseFloat(sellPriceInput.value)
+                        : null,
                     unit: unitSpan ? unitSpan.textContent.replace(/['"]/g, '').trim() : ''
                 });
             }
@@ -819,6 +850,12 @@
             items.forEach((item, index) => {
                 const originalQty = parseFloat(item.quantity).toFixed(3);
                 const originalPrice = parseFloat(item.price).toFixed(2);
+                const originalPriceType = ['wholesale', 'retail', 'slab'].includes(item.price_type)
+                    ? item.price_type
+                    : 'wholesale';
+                const originalSellPrice = item.sell_price === null || item.sell_price === undefined || item.sell_price === ''
+                    ? ''
+                    : parseFloat(item.sell_price).toFixed(2);
                 const lineTotal = parseFloat(item.quantity) * parseFloat(item.price);
                 
                 // Clean up the unit value to remove quotes
@@ -828,10 +865,27 @@
                     <tr class="editable-row hover:bg-gray-50 transition-colors" 
                         data-menu-id="${item.menu_id}" 
                         data-original-qty="${originalQty}" 
-                        data-original-price="${originalPrice}">
+                        data-original-price="${originalPrice}"
+                        data-original-price-type="${originalPriceType}"
+                        data-original-sell-price="${originalSellPrice}">
                         <td class="px-4 py-3 text-sm text-gray-500">${index + 1}</td>
                         <td class="px-4 py-3 text-sm text-gray-900">${item.brand_name || 'N/A'}</td>
                         <td class="px-4 py-3 text-sm text-gray-900">${item.menu_name}</td>
+                        <td class="px-4 py-3 text-sm">
+                            <select class="price-type-input w-28 px-2 py-1 text-sm border border-gray-200 rounded bg-gray-50" disabled>
+                                <option value="wholesale" ${originalPriceType === 'wholesale' ? 'selected' : ''}>Wholesale</option>
+                                <option value="retail" ${originalPriceType === 'retail' ? 'selected' : ''}>Retail</option>
+                                <option value="slab" ${originalPriceType === 'slab' ? 'selected' : ''}>Slab</option>
+                            </select>
+                        </td>
+                        <td class="px-4 py-3 text-sm">
+                            <div class="flex items-center gap-1">
+                                <span class="text-gray-500 text-xs">₱</span>
+                                <input type="number" min="0" step="0.001"
+                                    class="sell-price-input w-24 px-2 py-1 text-sm border border-gray-200 rounded bg-gray-50"
+                                    value="${originalSellPrice}" readonly>
+                            </div>
+                        </td>                        
                         <td class="px-4 py-3 text-sm">
                             <div class="flex items-center gap-2">
                                 <div class="relative">
@@ -885,7 +939,7 @@
         } else {
             itemsHtml = `
                 <tr>
-                    <td colspan="8" class="px-4 py-8 text-center text-gray-500">No items found in this order.</td>
+                    <td colspan="10" class="px-4 py-8 text-center text-gray-500">No items found in this order.</td>
                 </tr>
             `;
         }
@@ -1055,6 +1109,8 @@
                                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">#</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Brand</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Item Description</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Price Type</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Selling Price</th>                                
                                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Quantity</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Unit</th>
                                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Unit Price</th>
@@ -1065,7 +1121,7 @@
                         <tbody class="bg-white divide-y divide-gray-200">${itemsHtml}</tbody>
                         <tfoot class="bg-gray-50">
                             <tr>
-                                <td colspan="7" class="px-4 py-3 text-right font-bold text-gray-900">Total Amount</td>
+                                <td colspan="9" class="px-4 py-3 text-right font-bold text-gray-900">Total Amount</td>
                                 <td class="px-4 py-3 text-right font-bold text-green-600">₱${parseFloat(order.total_amount).toFixed(2)}</td>
                             </tr>
                         </tfoot>

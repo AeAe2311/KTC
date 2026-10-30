@@ -15,7 +15,12 @@ class ChartOfAccountsController extends Controller
         $industries = DB::table('chart_industries')->where('is_deleted', 0)->orderBy('name', 'asc')->get();
         $categories = DB::table('chart_sub_acc')->where('is_deleted', 0)->orderBy('name', 'asc')->get();
         $classifications = DB::table('chart_classifications')->where('is_deleted', 0)->orderBy('name', 'asc')->get();
-        $chartCategories = DB::table('chart_categories')->where('is_deleted', 0)->orderBy('name', 'asc')->get();
+        $chartCategories = DB::table('chart_categories')
+            ->leftJoin('chart_cat_fomula as formula', 'chart_categories.formula_id', '=', 'formula.id')
+            ->where('chart_categories.is_deleted', 0)
+            ->orderBy('chart_categories.name', 'asc')
+            ->select('chart_categories.*', 'formula.com_formula')
+            ->get();
 
         // Get expense categories with their related data for the chart of accounts
         $expenseCategories = DB::table('expenses_categories as ec')
@@ -100,6 +105,47 @@ class ChartOfAccountsController extends Controller
         $tab = $request->input('tab', 'chartCategory');
         return Redirect::route('report.chart-of-accounts.index', ['tab' => $tab])
             ->with('message', 'Chart Category deleted successfully.');
+    }
+
+    public function saveChartCategoryFormula(Request $request)
+    {
+        $validated = $request->validate([
+            'chart_category_id' => ['required', 'integer', 'exists:chart_categories,id'],
+            'com_formula' => [
+                'required',
+                'string',
+                'max:500',
+                'regex:/^(DEBIT|CREDIT|BEGINNING)(\s*[+-]\s*(DEBIT|CREDIT|BEGINNING))*$/',
+            ],
+        ]);
+
+        DB::transaction(function () use ($validated) {
+            $chartCategory = DB::table('chart_categories')
+                ->where('id', $validated['chart_category_id'])
+                ->where('is_deleted', 0)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$chartCategory) {
+                abort(404, 'Chart Category not found.');
+            }
+
+            $formulaId = DB::table('chart_cat_fomula')->insertGetId([
+                'com_formula' => trim($validated['com_formula']),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            DB::table('chart_categories')
+                ->where('id', $chartCategory->id)
+                ->update([
+                    'formula_id' => $formulaId,
+                    'updated_at' => now(),
+                ]);
+        });
+
+        return Redirect::route('report.chart-of-accounts.index', ['tab' => 'chartCategory'])
+            ->with('message', 'Chart Category formula saved successfully.');
     }
 
     // ===== INDUSTRY METHODS =====

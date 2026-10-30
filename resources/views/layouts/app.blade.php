@@ -127,6 +127,8 @@
                     window.__serverToast.push({ type: 'warning', message: {!! json_encode($msg) !!}, options: { duration: 0, allowClose: false, allowHtml: true } });
                 @endif
             </script>
+
+            @stack('scripts')
         </div>
     </body>
 </html>

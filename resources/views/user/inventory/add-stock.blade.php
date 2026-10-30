@@ -75,12 +75,16 @@
                     <div class="mt-8">
                         <div class="flex justify-between items-center mb-4">
                             <h2 class="text-xl font-semibold text-gray-900">Stock Items</h2>
-                            <button type="button" id="addItemBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                                </svg>
-                                Add Item
-                            </button>
+                            <div class="flex items-center gap-3">
+                                <span id="cartSaveStatus" class="text-sm text-gray-500" aria-live="polite">Cart is saved</span>
+                                <button type="button" id="retryCartSaveBtn" class="hidden px-3 py-2 border border-amber-500 text-amber-800 rounded-lg hover:bg-amber-50">Retry save</button>
+                                <button type="button" id="addItemBtn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                    </svg>
+                                    Add Item
+                                </button>
+                            </div>
                         </div>
 
                         <div class="overflow-x-auto shadow rounded-lg">
@@ -89,6 +93,8 @@
                                     <tr>
                                         <th class="px-4 py-3">Brand</th>
                                         <th class="px-4 py-3">Item Description</th>
+                                        <th class="px-4 py-3">Price Type</th>
+                                        <th class="px-4 py-3">Selling Price</th>
                                         <th class="px-4 py-3 w-32">Quantity</th>
                                         <th class="px-4 py-3 w-24">Unit</th>
                                         <th class="px-4 py-3 w-32">Unit Price</th>
@@ -136,57 +142,98 @@
             </div>
 
             <div class="px-6 py-6 space-y-5">
-                <div>
-                    <label for="modalItem" class="block text-base font-bold text-gray-900 mb-2">
-                        Item (Please select an item before choosing a brand.)<span class="text-red-600">*</span>
-                    </label>
-                    <div class="relative" id="itemSelectWrapper">
-                        <select id="modalItem" class="w-full px-4 py-3 pr-10 border-2 border-gray-400 rounded-lg focus:ring-3 focus:ring-blue-500 focus:border-blue-500 font-semibold text-base text-gray-800 bg-white appearance-none cursor-pointer searchable-select" style="display: none;">
-                            <option value="">Select item...</option>
-                        </select>
-                        <div id="itemSearchContainer" class="relative">
-                            <input type="text" 
-                                   id="modalItemSearch" 
-                                   placeholder="Search items..." 
-                                   class="w-full px-4 py-3 pr-10 border-2 border-gray-400 rounded-lg focus:ring-3 focus:ring-blue-500 focus:border-blue-500 font-semibold text-base text-gray-800 bg-white">
-                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                                </svg>
+               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="modalItem" class="block text-base font-bold text-gray-900 mb-2">
+                            Item <span class="text-red-600">*</span>
+                        </label>
+                        <div class="relative" id="itemSelectWrapper">
+                            <select id="modalItem" class="w-full px-4 py-3 pr-10 border-2 border-gray-400 rounded-lg focus:ring-3 focus:ring-blue-500 focus:border-blue-500 font-semibold text-base text-gray-800 bg-white appearance-none cursor-pointer searchable-select" style="display: none;">
+                                <option value="">Select item...</option>
+                            </select>
+                            <div id="itemSearchContainer" class="relative">
+                                <input type="text" 
+                                       id="modalItemSearch" 
+                                       placeholder="Search items..." 
+                                       class="w-full px-4 py-3 pr-10 border-2 border-gray-400 rounded-lg focus:ring-3 focus:ring-blue-500 focus:border-blue-500 font-semibold text-base text-gray-800 bg-white">
+                                <button type="button" id="clearModalItemSearch" class="hidden absolute inset-y-0 right-0 items-center pr-3 text-gray-400 hover:text-gray-700" aria-label="Clear item search">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                                <div id="modalItemSearchIcon" class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                    </svg>
+                                </div>
+                                <div id="itemSearchResults" class="absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto mt-1 hidden"></div>
                             </div>
-                            <div id="itemSearchResults" class="absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto mt-1 hidden"></div>
                         </div>
                     </div>
-                </div>
-                
-                <div>
-                    <label for="modalBrand" class="block text-base font-bold text-gray-900 mb-2">
-                        Brand <span class="text-red-600">*</span>
-                    </label>
-                    <div class="relative" id="brandSelectWrapper">
-                        <select id="modalBrand" class="w-full px-4 py-3 pr-10 border-2 border-gray-400 rounded-lg focus:ring-3 focus:ring-blue-500 focus:border-blue-500 font-semibold text-base text-gray-800 bg-white appearance-none cursor-pointer searchable-select" disabled style="display: none;">
-                            <option value="">Select brand...</option>
-                        </select>
-                        <div id="brandSearchContainer" class="relative">
-                            <input type="text" 
-                                   id="modalBrandSearch" 
-                                   placeholder="Search brands..." 
-                                   class="w-full px-4 py-3 pr-10 border-2 border-gray-400 rounded-lg focus:ring-3 focus:ring-blue-500 focus:border-blue-500 font-semibold text-base text-gray-800 bg-white" disabled>
-                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                                </svg>
-                            </div>
-                            <div id="brandSearchResults" class="absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto mt-1 hidden"></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div id="currentStockDisplay" class="hidden bg-blue-50 border-l-4 border-blue-700 rounded p-3">
-                    <p class="text-xs font-bold text-blue-700 uppercase tracking-wide mb-1">Current Stock</p>
-                    <p class="text-2xl font-bold text-blue-700"><span id="currentStock">0.000</span> units</p>
-                </div>
 
+                    <div>
+                        <label for="modalBrand" class="block text-base font-bold text-gray-900 mb-2">
+                            Brand <span class="text-red-600">*</span>
+                        </label>
+                        <div class="relative" id="brandSelectWrapper">
+                            <select id="modalBrand" class="w-full px-4 py-3 pr-10 border-2 border-gray-400 rounded-lg focus:ring-3 focus:ring-blue-500 focus:border-blue-500 font-semibold text-base text-gray-800 bg-white appearance-none cursor-pointer searchable-select" disabled style="display: none;">
+                                <option value="">Select brand...</option>
+                            </select>
+                            <div id="brandSearchContainer" class="relative">
+                                <input type="text" 
+                                       id="modalBrandSearch" 
+                                       placeholder="Search brands..." 
+                                       class="w-full px-4 py-3 pr-10 border-2 border-gray-400 rounded-lg focus:ring-3 focus:ring-blue-500 focus:border-blue-500 font-semibold text-base text-gray-800 bg-white" disabled>
+                                <button type="button" id="clearModalBrandSearch" class="hidden absolute inset-y-0 right-0 items-center pr-3 text-gray-400 hover:text-gray-700 disabled:pointer-events-none" aria-label="Clear brand search">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                                <div id="modalBrandSearchIcon" class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                    </svg>
+                                </div>
+                                <div id="brandSearchResults" class="absolute z-10 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto mt-1 hidden"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <p class="block text-base font-bold text-gray-900 mb-2"> Select Selling Price Types<span class="text-red-600">*</span></p>
+                    <div class="grid grid-cols-3 gap-3">
+                        <label class="flex items-center gap-2 px-3 py-2 border-2 border-gray-300 rounded-lg cursor-pointer hover:bg-blue-50">
+                            <input type="radio" name="modalPriceType" value="wholesale" data-label="Wholesale" class="text-blue-700 focus:ring-blue-500">
+                            <span id="wholesalePriceOption" class="text-sm font-semibold text-gray-800">Wholesale</span>
+                        </label>
+
+                        <label class="flex items-center gap-2 px-3 py-2 border-2 border-gray-300 rounded-lg cursor-pointer hover:bg-blue-50">
+                            <input type="radio" name="modalPriceType" value="retail" data-label="Retail" class="text-blue-700 focus:ring-blue-500">
+                            <span id="retailPriceOption" class="text-sm font-semibold text-gray-800">Retail</span>
+                        </label>
+
+                        <label class="flex items-center gap-2 px-3 py-2 border-2 border-gray-300 rounded-lg cursor-pointer hover:bg-blue-50">
+                            <input type="radio" name="modalPriceType" value="slab" data-label="Slab" class="text-blue-700 focus:ring-blue-500">
+                            <span id="slabPriceOption" class="text-sm font-semibold text-gray-800">Slab</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">          
+                    <div id="currentStockDisplay" class="hidden bg-blue-50 border-l-4 border-blue-700 rounded p-3">
+                        <p class="text-xs font-bold text-blue-700 uppercase tracking-wide mb-1">Current Stock</p>
+                        <p class="text-2xl font-bold text-blue-700"><span id="currentStock">0.000</span> units</p>
+                    </div>
+                
+                    <div>
+                        <label for="modalSellPrice" class="block text-base font-bold text-gray-900 mb-2">
+                            Selling Price <span class="text-red-600">*</span>
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600 font-semibold">₱</span>
+                            <input type="number" id="modalSellPrice" min="0" step="0.001" class="w-full pl-8 pr-4 py-3 border-2 border-gray-400 rounded-lg focus:ring-3 focus:ring-blue-500 focus:border-blue-500 font-semibold text-base text-gray-800" placeholder="0.000">
+                        </div>
+                    </div>
+                </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label for="modalQuantity" class="block text-base font-bold text-gray-900 mb-2">
@@ -194,7 +241,6 @@
                         </label>
                         <input type="number" id="modalQuantity" min="0.001" step="0.001" class="w-full px-4 py-3 border-2 border-gray-400 rounded-lg focus:ring-3 focus:ring-blue-500 focus:border-blue-500 font-semibold text-base text-gray-800" placeholder="0.000">
                     </div>
-
                     <div>
                         <label for="modalPrice" class="block text-base font-bold text-gray-900 mb-2">
                             Unit Price <span class="text-red-600">*</span>
@@ -204,21 +250,18 @@
                             <input type="number" id="modalPrice" min="0" step="0.001" class="w-full pl-8 pr-4 py-3 border-2 border-gray-400 rounded-lg focus:ring-3 focus:ring-blue-500 focus:border-blue-500 font-semibold text-base text-gray-800" placeholder="0.000">
                         </div>
                     </div>
-                </div>
-
-                <div class="bg-blue-50 rounded-lg p-4 border-2 border-blue-200">
-                    <p class="text-sm font-bold text-gray-700 mb-1">Line Total</p>
-                    <p class="text-3xl font-bold text-blue-700"><span id="lineTotalPreview">₱0.00</span></p>
-                </div>
-            </div>
-
+                <div>
+            </div>   
+        </div>
+            <div class="bg-blue-50 rounded-lg p-4 border-2 border-blue-200">
+                <p class="text-sm font-bold text-gray-700 mb-1">Line Total</p>
+                <p class="text-3xl font-bold text-blue-700"><span id="lineTotalPreview">₱0.00</span></p>
+            </div> 
             <div class="bg-gray-100 px-6 py-4 flex gap-3 justify-end border-t-2 border-gray-300">
                 <button type="button" id="closeModalBtn" class="px-6 py-2.5 border-2 border-gray-600 text-gray-800 font-bold text-base rounded-lg hover:bg-gray-200 transition-all">Cancel</button>
                 <button type="button" id="confirmAddItemBtn" class="px-6 py-2.5 bg-blue-700 text-white font-bold text-base rounded-lg hover:bg-blue-800 transition-all">Add Item</button>
-            </div>
-        </div>
+            </div>        
     </div>
-
     @php
         $allMenus = $menus->map(function ($menu) {
             if ($menu->brand && $menu->brand->is_deleted == 0) {
@@ -228,6 +271,9 @@
                     'brand_id' => $menu->brand_id,
                     'brand_name' => $menu->brand->name,
                     'price' => (float) $menu->price,
+                    'wholesale_price' => (float) ($menu->wholesale_price ?? 0),
+                    'retail_price' => (float) ($menu->retail_price ?? 0),
+                    'slab_price' => (float) ($menu->slab_price ?? 0),
                     'current_quantity' => (float) ($menu->current_quantity ?? 0),
                     'unit' => $menu->unit ?? '',
                 ];
@@ -239,6 +285,9 @@
     <script>
         let itemsData = [];
         const allMenus = @json($allMenus);
+        const cartSyncUrl = @json(route('stock.cart.sync'));
+        let cartSaveQueue = Promise.resolve();
+        let cartSaveVersion = 0;
         let selectedItemName = '';
         let selectedBrandId = '';
 
@@ -404,6 +453,9 @@
                         name: item.brand_name,
                         menuId: item.id,
                         price: item.price || 0,
+                        wholesalePrice: item.wholesale_price || 0,
+                        retailPrice: item.retail_price || 0,
+                        slabPrice: item.slab_price || 0,
                         stock: item.current_quantity || 0,
                         unit: item.unit || ''
                     });
@@ -430,6 +482,9 @@
                 option.textContent = brand.name;
                 option.dataset.menuId = brand.menuId;
                 option.dataset.price = brand.price;
+                option.dataset.wholesalePrice = brand.wholesalePrice;
+                option.dataset.retailPrice = brand.retailPrice;
+                option.dataset.slabPrice = brand.slabPrice;
                 option.dataset.stock = brand.stock;
                 option.dataset.unit = brand.unit;
                 select.appendChild(option);
@@ -437,6 +492,35 @@
             
             select.disabled = false;
             document.getElementById('modalBrandSearch').disabled = false;
+        }
+
+        function getBrandPriceForType(priceType) {
+            const brandSelect = document.getElementById('modalBrand');
+            const prices = {
+                wholesale: brandSelect.dataset.wholesalePrice,
+                retail: brandSelect.dataset.retailPrice,
+                slab: brandSelect.dataset.slabPrice,
+            };
+
+            return parseFloat(prices[priceType]) || 0;
+        }
+
+        function updateSellingPriceTypeOptionLabels() {
+            const brandSelect = document.getElementById('modalBrand');
+            const priceTypeOptionLabels = {
+                wholesale: document.getElementById('wholesalePriceOption'),
+                retail: document.getElementById('retailPriceOption'),
+                slab: document.getElementById('slabPriceOption'),
+            };
+
+            Object.entries(priceTypeOptionLabels).forEach(([priceType, optionLabel]) => {
+                const input = document.querySelector(`input[name="modalPriceType"][value="${priceType}"]`);
+                if (!input || !optionLabel) return;
+                const label = input.dataset.label;
+                optionLabel.textContent = brandSelect.value
+                    ? `${label} ${formatPeso(getBrandPriceForType(priceType))}`
+                    : label;
+            });
         }
 
         function setupItemSearch() {
@@ -590,6 +674,9 @@
                     div.dataset.value = option.value;
                     div.dataset.menuId = option.dataset.menuId;
                     div.dataset.price = option.dataset.price;
+                    div.dataset.wholesalePrice = option.dataset.wholesalePrice;
+                    div.dataset.retailPrice = option.dataset.retailPrice;
+                    div.dataset.slabPrice = option.dataset.slabPrice;
                     div.dataset.stock = option.dataset.stock;
                     div.dataset.unit = option.dataset.unit;
                     div.addEventListener('click', function(e) {
@@ -622,6 +709,9 @@
                     div.dataset.value = option.value;
                     div.dataset.menuId = option.dataset.menuId;
                     div.dataset.price = option.dataset.price;
+                    div.dataset.wholesalePrice = option.dataset.wholesalePrice;
+                    div.dataset.retailPrice = option.dataset.retailPrice;
+                    div.dataset.slabPrice = option.dataset.slabPrice;
                     div.dataset.stock = option.dataset.stock;
                     div.dataset.unit = option.dataset.unit;
                     div.addEventListener('click', function(e) {
@@ -660,6 +750,7 @@
                 document.getElementById('modalPrice').value = '';
                 document.getElementById('currentStockDisplay').classList.add('hidden');
                 brandResults.classList.add('hidden');
+                updateSellingPriceTypeOptionLabels();
             } else {
                 document.getElementById('modalBrand').innerHTML = '<option value="">Select brand...</option>';
                 document.getElementById('modalBrand').disabled = true;
@@ -667,6 +758,7 @@
                 brandSearch.disabled = true;
                 searchInput.value = '';
                 selectedItemName = '';
+                updateSellingPriceTypeOptionLabels();
             }
         });
 
@@ -677,11 +769,18 @@
             if (!selectedOption || !selectedOption.value) {
                 document.getElementById('currentStockDisplay').classList.add('hidden');
                 brandSearch.value = '';
+                delete this.dataset.wholesalePrice;
+                delete this.dataset.retailPrice;
+                delete this.dataset.slabPrice;
+                updateSellingPriceTypeOptionLabels();
                 return;
             }
 
             const stock = selectedOption.dataset.stock || 0;
             const price = selectedOption.dataset.price || 0;
+            const wholesalePrice = selectedOption.dataset.wholesalePrice || 0;
+            const retailPrice = selectedOption.dataset.retailPrice || 0;
+            const slabPrice = selectedOption.dataset.slabPrice || 0;
             const unit = selectedOption.dataset.unit || '';
             const menuId = selectedOption.dataset.menuId || '';
 
@@ -695,7 +794,11 @@
             document.getElementById('modalBrand').dataset.selectedUnit = unit;
             document.getElementById('modalBrand').dataset.selectedPrice = price;
             document.getElementById('modalBrand').dataset.menuId = menuId;
+            document.getElementById('modalBrand').dataset.wholesalePrice = wholesalePrice;
+            document.getElementById('modalBrand').dataset.retailPrice = retailPrice;
+            document.getElementById('modalBrand').dataset.slabPrice = slabPrice;
             
+            updateSellingPriceTypeOptionLabels();
             updateLineTotal();
         });
 
@@ -721,13 +824,19 @@
             document.getElementById('modalBrandSearch').value = '';
             document.getElementById('modalBrandSearch').disabled = true;
             document.getElementById('brandSearchResults').classList.add('hidden');
+            delete document.getElementById('modalBrand').dataset.wholesalePrice;
+            delete document.getElementById('modalBrand').dataset.retailPrice;
+            delete document.getElementById('modalBrand').dataset.slabPrice;
             
             document.getElementById('modalQuantity').value = '';
             document.getElementById('modalPrice').value = '';
+            document.getElementById('modalSellPrice').value = '';
+            document.querySelector('input[name="modalPriceType"][value="wholesale"]').checked = true;
             document.getElementById('currentStockDisplay').classList.add('hidden');
             document.getElementById('lineTotalPreview').textContent = '₱0.00';
             
             selectedItemName = '';
+            updateSellingPriceTypeOptionLabels();
         });
 
         document.getElementById('closeModalBtn').addEventListener('click', function() {
@@ -754,6 +863,10 @@
             const quantityValue = document.getElementById('modalQuantity').value;
             const quantity = parseFloat(quantityValue);
             const price = parseFloat(document.getElementById('modalPrice').value);
+            const sellPriceValue = document.getElementById('modalSellPrice').value;
+            const sellPrice = parseFloat(sellPriceValue);
+            const selectedPriceType = document.querySelector('input[name="modalPriceType"]:checked');
+            const priceType = selectedPriceType ? selectedPriceType.value : '';
             const unit = document.getElementById('modalBrand').dataset.selectedUnit || (selectedBrandOption ? selectedBrandOption.dataset.unit : '');
             const originalPrice = document.getElementById('modalBrand').dataset.selectedPrice || (selectedBrandOption ? selectedBrandOption.dataset.price : price);
             
@@ -767,8 +880,13 @@
                 return;
             }
 
-            if (!brandId || !menuId || !quantity || quantity <= 0 || !price || price < 0) {
-                alert('Please fill all fields correctly');
+            if (!brandId || !menuId || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(price) || price < 0) {
+                alert('Please enter a valid quantity and buying price');
+                return;
+            }
+
+            if (!priceType || sellPriceValue === '' || !Number.isFinite(sellPrice) || sellPrice < 0) {
+                alert('Please select a selling price type and enter a valid selling price');
                 return;
             }
 
@@ -780,25 +898,39 @@
                 item_name: itemName,
                 quantity: quantity,
                 unit: unit,
+                price_type: priceType,
+                sell_price: sellPrice,
                 unit_price: price,
                 original_price: parseFloat(originalPrice),
                 lineTotal: lineTotal
             });
 
-            addRowToTable(brandName, itemName, quantity, unit, price, lineTotal);
+            addRowToTable(brandName, itemName, quantity, unit, price, priceType, sellPrice, lineTotal);
             updateTotals();
 
             document.getElementById('addItemModal').classList.add('hidden');
+            saveCart().catch(function (error) {
+                console.error('Unable to save purchase-order cart:', error);
+            });
         });
 
-        function addRowToTable(brand, item, quantity, unit, price, lineTotal) {
+        function addRowToTable(brand, item, quantity, unit, price, priceType, sellPrice, lineTotal) {
             const tbody = document.getElementById('itemsTableBody');
             const tr = document.createElement('tr');
             const rowIndex = itemsData.length - 1;
+            const normalizedSellPrice = Number.isFinite(parseFloat(sellPrice)) ? parseFloat(sellPrice).toFixed(2) : '';
             
             tr.innerHTML = `
                 <td class="px-4 py-3 text-gray-700">${brand}</td>
                 <td class="px-4 py-3 text-gray-700">${item}</td>
+                <td class="px-4 py-3">
+                    <select class="w-full px-2 py-1 border rounded price-type-input" data-index="${rowIndex}">
+                        <option value="wholesale" ${priceType === 'wholesale' ? 'selected' : ''}>Wholesale</option>
+                        <option value="retail" ${priceType === 'retail' ? 'selected' : ''}>Retail</option>
+                        <option value="slab" ${priceType === 'slab' ? 'selected' : ''}>Slab</option>
+                    </select>
+                </td>
+                <td class="px-4 py-3"><input type="number" min="0" step="0.001" value="${normalizedSellPrice}" class="w-28 px-2 py-1 border rounded sell-price-input" data-index="${rowIndex}"></td>
                 <td class="px-4 py-3"><input type="number" step="0.001" value="${formatQuantity(quantity)}" class="w-full px-2 py-1 border rounded qty-input" data-index="${rowIndex}"></td>
                 <td class="px-4 py-3 text-gray-700">${unit}</td>
                 <td class="px-4 py-3"><input type="number" step="0.01" value="${price.toFixed(2)}" class="w-full px-2 py-1 border rounded price-input" data-index="${rowIndex}"></td>
@@ -835,6 +967,9 @@
                 itemsData[index].lineTotal = itemsData[index].quantity * itemsData[index].unit_price;
                 tr.querySelector('.line-total').textContent = formatPeso(itemsData[index].lineTotal);
                 updateTotals();
+                saveCart().catch(function (error) {
+                    console.error('Unable to save purchase-order cart:', error);
+                });
             });
 
             tr.querySelector('.qty-input').addEventListener('blur', function() {
@@ -856,6 +991,38 @@
                 itemsData[index].lineTotal = itemsData[index].quantity * itemsData[index].unit_price;
                 tr.querySelector('.line-total').textContent = formatPeso(itemsData[index].lineTotal);
                 updateTotals();
+                saveCart().catch(function (error) {
+                    console.error('Unable to save purchase-order cart:', error);
+                });
+            });
+
+            tr.querySelector('.price-type-input').addEventListener('change', function() {
+                const index = parseInt(this.dataset.index);
+                if (!itemsData[index]) return;
+
+                itemsData[index].price_type = this.value;
+                saveCart().catch(function (error) {
+                    console.error('Unable to save purchase-order cart:', error);
+                });
+            });
+
+            tr.querySelector('.sell-price-input').addEventListener('change', function() {
+                const index = parseInt(this.dataset.index);
+                const newPrice = parseFloat(this.value);
+                if (!itemsData[index]) return;
+
+                if (this.value === '' || !Number.isFinite(newPrice) || newPrice < 0) {
+                    alert('Selling price must be zero or greater');
+                    this.value = Number.isFinite(itemsData[index].sell_price)
+                        ? itemsData[index].sell_price.toFixed(2)
+                        : '';
+                    return;
+                }
+
+                itemsData[index].sell_price = newPrice;
+                saveCart().catch(function (error) {
+                    console.error('Unable to save purchase-order cart:', error);
+                });
             });
 
             tr.querySelector('.remove-btn').addEventListener('click', function() {
@@ -864,6 +1031,9 @@
                 tr.remove();
                 updateTotals();
                 updateRowIndices();
+                saveCart().catch(function (error) {
+                    console.error('Unable to save purchase-order cart:', error);
+                });
             });
         }
 
@@ -872,10 +1042,14 @@
             rows.forEach((row, index) => {
                 const qtyInput = row.querySelector('.qty-input');
                 const priceInput = row.querySelector('.price-input');
+                const priceTypeInput = row.querySelector('.price-type-input');
+                const sellPriceInput = row.querySelector('.sell-price-input');
                 const removeBtn = row.querySelector('.remove-btn');
                 
                 if (qtyInput) qtyInput.dataset.index = index;
                 if (priceInput) priceInput.dataset.index = index;
+                if (priceTypeInput) priceTypeInput.dataset.index = index;
+                if (sellPriceInput) sellPriceInput.dataset.index = index;
                 if (removeBtn) removeBtn.dataset.index = index;
             });
         }
@@ -886,7 +1060,69 @@
             document.getElementById('totalAmount').textContent = formatPeso(subtotal);
         }
 
-        document.getElementById('addStockForm').addEventListener('submit', function(e) {
+        function saveCart() {
+            const cartStatus = document.getElementById('cartSaveStatus');
+            const retryButton = document.getElementById('retryCartSaveBtn');
+            const saveVersion = ++cartSaveVersion;
+            const items = itemsData.map(function(item) {
+                return {
+                    menu_id: item.menu_id,
+                    quantity: item.quantity,
+                    price: item.unit_price,
+                    price_type: item.price_type,
+                    sell_price: item.sell_price,
+                    unit: item.unit || ''
+                };
+            });
+
+            cartStatus.textContent = 'Saving cart...';
+            cartStatus.className = 'text-sm text-gray-500';
+            retryButton.classList.add('hidden');
+
+            const savePromise = cartSaveQueue.catch(function () {}).then(async function() {
+                const response = await fetch(cartSyncUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('#addStockForm input[name="_token"]').value,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ items: items }),
+                    keepalive: true
+                });
+                const result = await response.json();
+
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'The cart could not be saved.');
+                }
+
+                return result;
+            });
+
+            cartSaveQueue = savePromise;
+            return savePromise.then(function(result) {
+                if (saveVersion === cartSaveVersion) {
+                    cartStatus.textContent = `Cart saved (${result.count} item${result.count === 1 ? '' : 's'})`;
+                    cartStatus.className = 'text-sm text-green-700';
+                }
+                return result;
+            }).catch(function(error) {
+                if (saveVersion === cartSaveVersion) {
+                    cartStatus.textContent = 'Cart save failed. Items on this page may not be persisted.';
+                    cartStatus.className = 'text-sm text-red-700';
+                    retryButton.classList.remove('hidden');
+                }
+                throw error;
+            });
+        }
+
+        document.getElementById('retryCartSaveBtn').addEventListener('click', function() {
+            saveCart().catch(function (error) {
+                console.error('Unable to save purchase-order cart:', error);
+            });
+        });
+
+        document.getElementById('addStockForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
             if (itemsData.length === 0) {
@@ -906,29 +1142,58 @@
                 return;
             }
 
+            try {
+                await saveCart();
+            } catch (error) {
+                alert('The purchase-order cart could not be saved. Please retry before submitting.');
+                return;
+            }
+
+            this.querySelectorAll('[data-generated-item="true"]').forEach(function(input) {
+                input.remove();
+            });
+
             itemsData.forEach((item, index) => {
                 const menuIdInput = document.createElement('input');
                 menuIdInput.type = 'hidden';
                 menuIdInput.name = `items[${index}][menu_id]`;
                 menuIdInput.value = item.menu_id;
+                menuIdInput.dataset.generatedItem = 'true';
                 this.appendChild(menuIdInput);
 
                 const quantityInput = document.createElement('input');
                 quantityInput.type = 'hidden';
                 quantityInput.name = `items[${index}][quantity]`;
                 quantityInput.value = item.quantity;
+                quantityInput.dataset.generatedItem = 'true';
                 this.appendChild(quantityInput);
 
                 const priceInput = document.createElement('input');
                 priceInput.type = 'hidden';
                 priceInput.name = `items[${index}][price]`;
                 priceInput.value = item.unit_price;
+                priceInput.dataset.generatedItem = 'true';
                 this.appendChild(priceInput);
+
+                const priceTypeInput = document.createElement('input');
+                priceTypeInput.type = 'hidden';
+                priceTypeInput.name = `items[${index}][price_type]`;
+                priceTypeInput.value = item.price_type;
+                priceTypeInput.dataset.generatedItem = 'true';
+                this.appendChild(priceTypeInput);
+
+                const sellPriceInput = document.createElement('input');
+                sellPriceInput.type = 'hidden';
+                sellPriceInput.name = `items[${index}][sell_price]`;
+                sellPriceInput.value = item.sell_price;
+                sellPriceInput.dataset.generatedItem = 'true';
+                this.appendChild(sellPriceInput);
                 
                 const unitInput = document.createElement('input');
                 unitInput.type = 'hidden';
                 unitInput.name = `items[${index}][unit]`;
                 unitInput.value = item.unit || '';
+                unitInput.dataset.generatedItem = 'true';
                 this.appendChild(unitInput);
                 
                 if (item.original_price) {
@@ -936,6 +1201,7 @@
                     originalPriceInput.type = 'hidden';
                     originalPriceInput.name = `items[${index}][original_price]`;
                     originalPriceInput.value = item.original_price;
+                    originalPriceInput.dataset.generatedItem = 'true';
                     this.appendChild(originalPriceInput);
                 }
             });
@@ -948,6 +1214,7 @@
             populateItemDropdown();
             setupItemSearch();
             setupBrandSearch();
+            updateSellingPriceTypeOptionLabels();
             
             const oldSupplierId = @json(old('supplier_id', ''));
             if (oldSupplierId) {
@@ -962,9 +1229,10 @@
                 }
             }
             
-            const oldItems = @json(old('items', []));
+            const oldItems = @json(old('items', $cartItems));
             if (oldItems && oldItems.length > 0) {
                 loadSavedItems(oldItems);
+                document.getElementById('cartSaveStatus').textContent = `Cart loaded (${oldItems.length} item${oldItems.length === 1 ? '' : 's'})`;
             }
         });
 
@@ -972,11 +1240,21 @@
             if (!items || items.length === 0) return;
             
             items.forEach(item => {
-                const brandName = item.brand_name || '';
-                const itemName = item.menu_name || item.item_name || '';
+                const menu = allMenus.find(function(candidate) {
+                    return String(candidate.id) === String(item.menu_id);
+                });
+                const brandName = item.brand_name || (menu ? menu.brand_name : '');
+                const itemName = item.menu_name || item.item_name || (menu ? menu.name : '');
                 const quantity = parseFloat(item.quantity) || 0;
                 const unit = item.unit || '';
-                const price = parseFloat(item.price) || 0;
+                const priceValue = item.price !== undefined ? item.price : item.unit_price;
+                const price = parseFloat(priceValue) || 0;
+                const priceType = ['wholesale', 'retail', 'slab'].includes(item.price_type)
+                    ? item.price_type
+                    : 'wholesale';
+                const sellPrice = item.sell_price === null || item.sell_price === undefined || item.sell_price === ''
+                    ? NaN
+                    : parseFloat(item.sell_price);
                 const lineTotal = quantity * price;
                 
                 itemsData.push({
@@ -985,12 +1263,14 @@
                     item_name: itemName,
                     quantity: quantity,
                     unit: unit,
+                    price_type: priceType,
+                    sell_price: sellPrice,
                     unit_price: price,
                     original_price: price,
                     lineTotal: lineTotal
                 });
                 
-                addRowToTable(brandName, itemName, quantity, unit, price, lineTotal);
+                addRowToTable(brandName, itemName, quantity, unit, price, priceType, sellPrice, lineTotal);
             });
             
             updateTotals();

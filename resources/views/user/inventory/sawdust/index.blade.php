@@ -4,19 +4,25 @@
     <div class="p-3 lg:ml-64 lg:pt-3">
         <div id="contentDiv" class="w-full p-2">
             @if (session('success'))
-                <div class="mb-4 rounded-lg bg-green-100 p-3 text-green-800">
-                    {{ session('success') }}
-                </div>
+                <script>
+                    window.__serverToast = window.__serverToast || [];
+                    window.__serverToast.push({
+                        type: 'success',
+                        message: {!! json_encode(session('success')) !!}
+                    });
+                </script>
             @endif
 
             @if ($errors->any())
-                <div class="mb-4 rounded-lg bg-red-100 p-3 text-red-800">
-                    <ul class="list-inside list-disc">
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                </div>
+                <script>
+                    window.__serverToast = window.__serverToast || [];
+                    @foreach ($errors->all() as $error)
+                        window.__serverToast.push({
+                            type: 'error',
+                            message: {!! json_encode($error) !!}
+                        });
+                    @endforeach
+                </script>
             @endif
 
             <div class="mb-6 overflow-hidden rounded-lg bg-white p-4 shadow-md">
@@ -162,38 +168,32 @@
                                 No active sawdust items are available for your store.
                             </div>
                         @else
-                            {{-- Item display: no selection needed --}}
+                            {{-- Item dropdown: choose which sawdust item --}}
                             <div>
-                                <label class="mb-1 block text-xs font-semibold text-gray-600">
-                                    INVENTORY ITEM
+                                <label for="menu_id"
+                                    class="mb-1 block text-xs font-semibold text-gray-600">
+                                    INVENTORY ITEM <span class="text-red-500">*</span>
                                 </label>
 
-                                <div class="flex items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
-                                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
-                                        <svg class="h-5 w-5" fill="none"
-                                            viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                stroke-width="1.8"
-                                                d="M4 8l8-4 8 4-8 4-8-4zm0 0v8l8 4 8-4V8m-8 4v8"/>
-                                        </svg>
-                                    </div>
+                                <select
+                                    id="menu_id"
+                                    name="menu_id"
+                                    required
+                                    class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+                                    <option value="">Select sawdust item</option>
+                                    @foreach ($menus as $menu)
+                                        <option
+                                            value="{{ $menu->id }}"
+                                            data-stock="{{ number_format((float) $menu->current_quantity, 3) }}"
+                                            data-unit="{{ $menu->unit }}"
+                                            @selected(old('menu_id') == $menu->id)>
+                                            {{ $menu->name }}
+                                            (stock: {{ number_format((float) $menu->current_quantity, 3) }} {{ $menu->unit ?: '' }})
+                                        </option>
+                                    @endforeach
+                                </select>
 
-                                    <div class="min-w-0 flex-1">
-                                        <p class="text-sm font-semibold text-gray-900">
-                                            Sawdust
-                                        </p>
-                                        <p class="text-xs text-gray-500">
-                                            Current stock:
-                                            <span class="font-semibold text-gray-700">
-                                                {{ number_format((float) $menus->first()->current_quantity, 3) }}
-                                            </span>
-                                        </p>
-                                    </div>
-                                </div>
-
-                                {{-- Automatically submit the first sawdust menu ID --}}
-                                <input type="hidden" name="menu_id"
-                                    value="{{ $menus->first()->id }}">
+                                <p class="mt-1 text-xs text-gray-500" id="currentStockHint"></p>
                             </div>
 
                             {{-- Quantity --}}
@@ -215,7 +215,7 @@
                                     class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
                             </div>
 
-                            {{-- Static unit dropdown --}}
+                            {{-- Unit dropdown: merged static units + existing units from DB --}}
                             <div>
                                 <label for="unit"
                                     class="mb-1 block text-xs font-semibold text-gray-600">
@@ -229,9 +229,9 @@
                                     class="block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
 
                                     <option value="">Select unit</option>
-                                    @foreach (['kg', 'pcs', 'each', 'box', 'pack'] as $unit)
+                                    @foreach (collect(['kg', 'pcs', 'each', 'box', 'pack'])->merge($units)->unique()->sort()->values() as $unit)
                                         <option value="{{ $unit }}"
-                                            @selected(old('unit', 'kg') === $unit)>
+                                            @selected(old('unit') === $unit)>
                                             {{ $unit }}
                                         </option>
                                     @endforeach
@@ -250,7 +250,7 @@
 
                             <button type="submit"
                                 class="rounded-lg bg-blue-700 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-800">
-                                ADD QUANTITY
+                                ENTER QUANTITY
                             </button>
                         </div>
                     @endif
@@ -265,10 +265,10 @@
 
             if (!modal) return;
 
-            const openBtn = document.getElementById('openAddModalBtn');
-            const closeBtn = document.getElementById('closeAddModalBtn');
+            const openBtn   = document.getElementById('openAddModalBtn');
+            const closeBtn  = document.getElementById('closeAddModalBtn');
             const cancelBtn = document.getElementById('cancelAddModalBtn');
-            const backdrop = document.getElementById('addQuantityBackdrop');
+            const backdrop  = document.getElementById('addQuantityBackdrop');
 
             function openAddModal() {
                 modal.classList.remove('hidden');
@@ -293,6 +293,39 @@
                     closeAddModal();
                 }
             });
+
+            // ---- Item selection sync (stock hint + unit preselect) ----
+            const menuSelect = document.getElementById('menu_id');
+            const stockHint  = document.getElementById('currentStockHint');
+            const unitSelect = document.getElementById('unit');
+
+            function syncItemHint() {
+                if (!menuSelect) return;
+
+                const opt = menuSelect.selectedOptions[0];
+                if (!opt || !opt.value) {
+                    if (stockHint) stockHint.textContent = '';
+                    return;
+                }
+
+                const stock = opt.dataset.stock || '0';
+                const unit  = opt.dataset.unit  || '';
+
+                if (stockHint) {
+                    stockHint.textContent = `Current stock: ${stock} ${unit}`.trim();
+                }
+
+                // Preselect the item's existing unit if present in the dropdown
+                if (unitSelect && unit) {
+                    const match = [...unitSelect.options].find(o => o.value === unit);
+                    if (match) {
+                        unitSelect.value = unit;
+                    }
+                }
+            }
+
+            menuSelect?.addEventListener('change', syncItemHint);
+            syncItemHint(); // handles old('menu_id') after validation error
 
             // Reopen the modal after validation errors.
             @if ($errors->any() && old('menu_id'))

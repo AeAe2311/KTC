@@ -11,6 +11,7 @@ class TrialBalanceController extends Controller
     protected array $priorityAccounts = ['cash on hand', 'cash on bank', 'Trade Receivables', 'Cheque in Transit', 'Revolving Funds', 'Inventories', 'sales', 'Cost of Goods Sold'];
 
     protected bool $cumulativeOpening = false;
+    protected ?string $selectedStoreCode = null;
 
     /* =====================================================================
      *  INDEX
@@ -18,6 +19,7 @@ class TrialBalanceController extends Controller
     public function index(Request $request)
     {
         [$selectedMonth, $selectedYear, $fromDate, $toDate] = $this->resolvePeriod($request);
+        $selectedBranch = $this->resolveSelectedBranch($request);
 
         $search              = $request->input('search');
         $dimensionA          = $request->input('dimension_a', 'all');
@@ -29,7 +31,10 @@ class TrialBalanceController extends Controller
 
         $trialBalances = [];
         $totals        = $this->emptyTotals();
-
+        $branchs = DB::table('settings')
+            ->orderBy('name', 'asc')
+            ->where('is_deleted', 0)
+            ->get();
         if ($showResults) {
             $trialBalances = $this->buildTrialBalances(
                 $search, $dimensionA, $dimensionB, $showClosed,
@@ -61,8 +66,40 @@ class TrialBalanceController extends Controller
             'fromDate', 'toDate', 'selectedMonth', 'selectedYear',
             'months', 'years', 'search', 'dimensionA', 'dimensionB',
             'showResults', 'includeZeroBalances', 'detailByAccount',
-            'showClosed', 'trialBalances', 'totals'
+            'showClosed', 'trialBalances', 'totals', 'branchs',
+            'selectedBranch'
         ));
+    }
+
+    protected function resolveSelectedBranch(Request $request): ?string
+    {
+        $selectedBranch = $request->input('branch');
+
+        if ($selectedBranch === null || $selectedBranch === '') {
+            $this->selectedStoreCode = null;
+            return null;
+        }
+
+        $branchExists = DB::table('settings')
+            ->where('store_code', $selectedBranch)
+            ->where('is_deleted', 0)
+            ->where('id', '!=', 1)
+            ->exists();
+
+        if (!$branchExists) {
+            abort(404, 'Selected branch was not found.');
+        }
+
+        $this->selectedStoreCode = (string) $selectedBranch;
+
+        return $this->selectedStoreCode;
+    }
+
+    protected function applyStoreCode($query, string $column): void
+    {
+        if ($this->selectedStoreCode !== null) {
+            $query->where($column, $this->selectedStoreCode);
+        }
     }
 
     /* =====================================================================
@@ -513,6 +550,8 @@ class TrialBalanceController extends Controller
      * ===================================================================== */
     public function getBreakdown(Request $request)
     {
+        $this->resolveSelectedBranch($request);
+
         $accountId = $request->input('account_id');
         $month     = $request->input('month');
         $year      = $request->input('year');
@@ -574,8 +613,12 @@ class TrialBalanceController extends Controller
     /* =====================================================================
      *  ROW FETCHERS
      * ===================================================================== */
-    protected function applyRange($query, $columns, ?string $start, ?string $end): void
+    protected function applyRange($query, $columns, ?string $start, ?string $end, ?string $storeColumn = null): void
     {
+        $column = (string) ((array) $columns)[0];
+        $alias = str_contains($column, '.') ? strstr($column, '.', true) : null;
+        $this->applyStoreCode($query, $storeColumn ?? ($alias ? $alias . '.store_code' : 'store_code'));
+
         foreach ((array) $columns as $column) {
             if ($start) {
                 $query->where($column, '>=', $start . ' 00:00:00');
@@ -584,6 +627,29 @@ class TrialBalanceController extends Controller
                 $query->where($column, '<=', $end . ' 23:59:59');
             }
         }
+    }
+
+    protected function applyFirstExpenseLine($query): void
+    {
+        $query->whereIn('t.id', function ($firstLine) {
+            $firstLine->selectRaw('MIN(first_line.id)')
+                ->from('inventory_transactions as first_line')
+                ->whereColumn('first_line.e_id', 't.e_id')
+                ->where('first_line.is_deleted', 0)
+                ->groupBy('first_line.e_id');
+        });
+    }
+
+    protected function joinLatestExpenseJournal($query): void
+    {
+        $latestJournal = DB::table('expenses_journal')
+            ->selectRaw('MAX(id) as id')
+            ->groupBy('e_id');
+
+        $query->join('expenses_journal as j', 't.e_id', '=', 'j.e_id')
+            ->joinSub($latestJournal, 'latest_journal', function ($join) {
+                $join->on('latest_journal.id', '=', 'j.id');
+            });
     }
 
     /**
@@ -612,24 +678,26 @@ class TrialBalanceController extends Controller
         $rows = collect();
 
         $invQuery = DB::table('inventory_transactions as t')
-            ->leftJoin('inventory_etransaction as e', 't.e_id', '=', 'e.id')
             ->leftJoin('users as u', 't.user_id', '=', 'u.id')
             ->where('t.category_id', $accountId)
             ->where('t.is_deleted', 0)
             ->whereNotNull('t.category_id')
             ->whereNotNull('t.payment_class')
             ->whereNotNull('t.exp_type')
+            ->whereNotNull('t.e_id')
             ->select(
                 't.id',
                 't.created_at',
-                't.amount',
+                'j.e_amount as amount',
                 't.payment_class',
                 't.remarks',
-                'e.e_transid as reference_no',
+                'j.e_transid as reference_no',
                 'u.lastname as user_name'
             );
 
-        $this->applyRange($invQuery, 't.created_at', $rangeStart, $rangeEnd);
+        $this->joinLatestExpenseJournal($invQuery);
+        $this->applyFirstExpenseLine($invQuery);
+        $this->applyRange($invQuery, 't.created_at', $rangeStart, $rangeEnd, 'j.store_code');
 
         foreach ($invQuery->orderBy('t.created_at', 'asc')->get() as $tx) {
             $rows->push([
@@ -858,6 +926,7 @@ class TrialBalanceController extends Controller
                 ->leftJoin('inventory_etransaction as e', 't.e_id', '=', 'e.id')
                 ->leftJoin('users as u', 't.user_id', '=', 'u.id')
                 ->where('t.is_deleted', 0)
+                ->where('t.type', '!=', 'TRADE PAYABLE')
                 ->where('t.exp_type', 0)
                 ->select(
                     't.id', 't.created_at', 't.amount', 't.remarks',
@@ -881,7 +950,7 @@ class TrialBalanceController extends Controller
             }
 
             /* 3) Adjustments — Beginning / Scrap / Ending (income_statement id = 2) */
-            $isField = DB::table('income_statement')->where('id', 2)->first();
+            $isField = DB::table('income_statement')->where('id', 2)>where('created_at', '>=', $startDate)->where('created_at', '<', $endDate)->first(); // LINE 953: updated by ken 10-30-2026
             if ($isField) {
                 $anchorDate = $rangeEnd ?: date('Y-m-t');
                 $anchorTs   = strtotime($anchorDate);
@@ -944,12 +1013,12 @@ class TrialBalanceController extends Controller
                 ->leftJoin('users as u', 't.user_id', '=', 'u.id')
                 ->where('t.is_deleted', 0)
                 ->where('t.type', 'TRADE PAYABLE')
-                ->whereNotNull('t.department_id')
-                ->whereNotNull('t.e_id')
-                ->whereNotNull('t.inv_id')
-                ->whereNotNull('t.category_id')
-                ->whereNotNull('t.supplier_id')
-                ->whereNotNull('t.payment_class')
+                // ->whereNotNull('t.department_id')
+                // ->whereNotNull('t.e_id')
+                // ->whereNotNull('t.inv_id')
+                // ->whereNotNull('t.category_id')
+                // ->whereNotNull('t.supplier_id')
+                // ->whereNotNull('t.payment_class')
                 ->select(
                     't.id', 't.created_at', 't.amount', 't.payment_class', 't.is_paid',
                     'e.e_transid as reference_no',
@@ -995,12 +1064,12 @@ class TrialBalanceController extends Controller
                 ->leftJoin('users as u', 't.user_id', '=', 'u.id')
                 ->where('t.is_deleted', 0)
                 ->where('t.type', 'TRADE PAYABLE')
-                ->whereNotNull('t.department_id')
-                ->whereNotNull('t.e_id')
-                ->whereNotNull('t.inv_id')
-                ->whereNotNull('t.category_id')
-                ->whereNotNull('t.supplier_id')
-                ->whereNotNull('t.payment_class')
+                // ->whereNotNull('t.department_id')
+                // ->whereNotNull('t.e_id')
+                // ->whereNotNull('t.inv_id')
+                // ->whereNotNull('t.category_id')
+                // ->whereNotNull('t.supplier_id')
+                // ->whereNotNull('t.payment_class')
                 ->select(
                     't.id', 't.created_at', 't.amount', 't.payment_class', 't.is_paid',
                     'e.e_transid as reference_no',
@@ -1393,9 +1462,8 @@ class TrialBalanceController extends Controller
             ]);
         }
 
-        /* 2) EXPENSES — inventory_transactions (payment_class = 1) → CREDIT to cash/bank/CIT */
+        /* 2) APPROVED EXPENSES — expenses_journal → CREDIT to cash/bank/CIT */
         $expenseQuery = DB::table('inventory_transactions as t')
-            ->leftJoin('inventory_etransaction as e', 't.e_id', '=', 'e.id')
             ->leftJoin('users as u', 't.user_id', '=', 'u.id')
             ->where('t.is_deleted', 0)
             ->where('t.payment_class', 1)
@@ -1403,12 +1471,15 @@ class TrialBalanceController extends Controller
             ->whereNotNull('t.category_id')
             ->whereNotNull('t.payment_class')
             ->whereNotNull('t.exp_type')
+            ->whereNotNull('t.e_id')
             ->select(
-                't.id', 't.created_at', 't.amount', 't.is_paid', 't.remarks',
-                'e.e_transid as reference_no', 'u.lastname as user_name'
+                't.id', 't.created_at', 'j.e_amount as amount', 't.is_paid', 't.remarks',
+                'j.e_transid as reference_no', 'u.lastname as user_name'
             );
 
-        $this->applyRange($expenseQuery, 't.created_at', $rangeStart, $rangeEnd);
+        $this->joinLatestExpenseJournal($expenseQuery);
+        $this->applyFirstExpenseLine($expenseQuery);
+        $this->applyRange($expenseQuery, 't.created_at', $rangeStart, $rangeEnd, 'j.store_code');
         $expenseQuery->whereRaw("UPPER(TRIM(COALESCE(t.is_paid, ''))) <> ''");
 
         if (str_contains($key, 'cash on hand')) {
@@ -1575,6 +1646,7 @@ class TrialBalanceController extends Controller
      * ===================================================================== */
     public function exportCsv(Request $request)
     {
+        $this->resolveSelectedBranch($request);
         [, , $fromDate, $toDate] = $this->resolvePeriod($request);
 
         $search              = $request->input('search');
@@ -1635,6 +1707,7 @@ class TrialBalanceController extends Controller
 
     public function exportPdf(Request $request)
     {
+        $this->resolveSelectedBranch($request);
         [, , $fromDate, $toDate] = $this->resolvePeriod($request);
 
         $search              = $request->input('search');

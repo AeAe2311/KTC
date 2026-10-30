@@ -486,6 +486,7 @@
                         <col style="width:120px">   {{-- VAT --}}
                         <col style="width:120px">   {{-- W/Tax --}}
                         <col style="width:150px">   {{-- Server/Cashier --}}
+                        <col style="width:150px">   {{-- Notes --}}
                         <col style="width:80px">    {{-- Actions --}}
                     </colgroup>
                     <thead class="text-xs text-gray-700 uppercase bg-gray-100">
@@ -497,6 +498,7 @@
                             <th class="px-4 py-3 text-right whitespace-nowrap">VAT</th>
                             <th class="px-4 py-3 text-right whitespace-nowrap">W/Tax</th>
                             <th class="px-4 py-3 whitespace-nowrap">Server/Cashier</th>
+                            <th class="px-4 py-3 whitespace-nowrap">Notes</th>
                             <th class="px-4 py-3 text-center whitespace-nowrap">Actions</th>
                         </tr>
                     </thead>
@@ -539,7 +541,9 @@
                                         <span class="text-gray-700">{{ $i_e->firstname }} {{ $i_e->lastname }}</span>
                                     </div>
                                 </td>
-
+                                <td class="px-4 py-4 text-center whitespace-nowrap tabular-nums text-gray-700">
+                                   {{ $i_e->other_remarks }}
+                                </td>
 
                                 <td class="px-4 py-4 whitespace-nowrap">
                                     <div class="flex justify-center items-center gap-1">
@@ -569,7 +573,7 @@
                             </tr>
 
                             <tr>
-                                <td colspan="7" class="px-4 pt-0 pb-3">
+                                <td colspan="8" class="px-4 pt-0 pb-3">
                                     @if ($items->isEmpty())
                                         <div class="line-items-wrap px-4 py-3 text-xs text-gray-400 italic">No line items.</div>
                                     @else

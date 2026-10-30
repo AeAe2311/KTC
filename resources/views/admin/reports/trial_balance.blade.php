@@ -10,6 +10,23 @@
 
                     <div class="mt-2 flex flex-wrap justify-center items-center gap-1.5">
                         <div class="w-full max-w-[220px]">
+                            <label for="branch" class="block text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                                Branch
+                            </label>
+                            <select id="branch" name="branch"
+                                class="mt-1 h-8 w-full rounded-lg border border-slate-300 bg-slate-50 px-3 text-xs text-slate-900 shadow-sm transition focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-200">
+                                <option value="">-- Select Branch --</option>
+                                @foreach ($branchs as $branch)
+                                    @if ($branch->id != 1)
+                                        <option value="{{ $branch->store_code }}" {{ (string)($selectedBranch ?? '') === (string)$branch->store_code ? 'selected' : '' }}>
+                                            {{ $branch->name }}
+                                        </option>
+                                    @endif
+                                @endforeach
+                            </select>
+                        </div>
+                        
+                        <div class="w-full max-w-[220px]">
                             <label for="month" class="block text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
                                 Month
                             </label>
@@ -203,7 +220,8 @@
                                         data-account-id="{{ $item->id }}"
                                         data-account-name="{{ $item->account_name }}"
                                         data-month="{{ $selectedMonth }}"
-                                        data-year="{{ $selectedYear }}">
+                                        data-year="{{ $selectedYear }}"
+                                        data-branch="{{ $selectedBranch ?? '' }}">
                                         <td class="px-3 py-2 font-medium text-slate-800 border-r-2 border-slate-900">
                                             <span class="inline-flex items-center gap-1.5">
                                                 {{ $item->industry ?? '—' }}
@@ -650,6 +668,7 @@
                 const accountName = row.dataset.accountName;
                 const month       = row.dataset.month;
                 const year        = row.dataset.year;
+                const branch      = row.dataset.branch;
 
                 lastBreakdownAccountName = accountName;
                 openBreakdownModal(accountName);
@@ -659,7 +678,7 @@
                 }
                 breakdownFetchController = new AbortController();
 
-                fetch(`${breakdownUrl}?account_id=${encodeURIComponent(accountId)}&month=${encodeURIComponent(month)}&year=${encodeURIComponent(year)}`, {
+                fetch(`${breakdownUrl}?account_id=${encodeURIComponent(accountId)}&month=${encodeURIComponent(month)}&year=${encodeURIComponent(year)}&branch=${encodeURIComponent(branch)}`, {
                     signal: breakdownFetchController.signal,
                     headers: { 'Accept': 'application/json' }
                 })

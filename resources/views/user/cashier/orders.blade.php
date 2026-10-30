@@ -995,7 +995,7 @@
                     </div>
                     <div class="flex-inline text-center p-2">
                         <!-- <input type="text" id="mopselected"> -->
-                        <p id="amountError" class="hidden text-lg text-red-500 italic">Invalid amount. Please enter an amount more than or equal to <span class=" font-medium ml-1"> ₱ </span><span id="actualAmount2" class=" font-bold text-2xl"></span></p>
+                        <p id="amountError" class="hidden text-lg text-red-500 italic">Invalid payment amount. Enter the full amount for a table payment, or a partial amount up to the AR balance.</p>
                     </div>
                     <!-- Modal footer -->
                     <div class="flex items-center p-2 space-x-6 border-t border-gray-300 rounded-b">
@@ -1633,7 +1633,8 @@
 
             
         {{-- LEFT CONTENT --}}
-                <div class="h-full w-full xl:w-auto xl:col-span-2 bg-white shadow-lg rounded-lg border border-gray-200 overflow-hidden">
+        <div style="height: calc(100vh - 48px)" class="p-4 {{ (Auth::user()->role == 1) ? 'lg:ml-64' : 'w-screen' }} gap-4">
+                <!-- <div class="h-full w-full xl:w-auto xl:col-span-2 bg-white shadow-lg rounded-lg border border-gray-200 overflow-hidden"> -->
             <div>
                 <!-- <div class="p-2 flex items-center justify-between">
                     @csrf
@@ -1647,71 +1648,121 @@
                     </div>
                 </div> -->
 
-                <div class="p-2 border-b border-neutral-300">
-                    <div class="flex justify-between w-full">
-                        <div class="p-px">
-                            <button class="w-9 aspect-square border border-neutral-300 rounded-lg scroll-left table">
-                                <i class="uil uil-arrow-left text-2xl"></i>
-                            </button>
+                <section class="p-4 border-b border-neutral-300">
+                    <div class="flex flex-col gap-4">
+                        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <h1 class="text-2xl font-bold text-slate-800">Account Receivables</h1>
+                                <p class="text-sm text-slate-500">Unpaid Pay Later transactions by client</p>
+                            </div>
+                            <input type="search" id="searchArClient" placeholder="Search clients or transactions"
+                                class="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm md:max-w-sm">
                         </div>
-                        <div id="tableTabsC" class="py-0.5 overflow-x-hidden w-full">
-                            <div id="tableTabs" data-tabs-toggle="#tableTabContent" role="tablist" class="overflow-x-auto flex gap-x-2">
-                                <button id="all-table-tab" data-tabs-target="#all-table" type="button" role="tab" aria-controls="all-table" aria-selected="true" class="leading-8 font-semibold border  rounded-lg whitespace-nowrap w-full">
-                                    ALL
-                                </button>
-                                @foreach ($table_cat as $table_category)
-                                    <button id="{{ $table_category->slug }}-tab" data-tabs-target="#{{ $table_category->slug }}-table" type="button" role="tab" aria-controls="{{ $table_category->slug }}-table" aria-selected="false" class="leading-8 font-semibold border rounded-lg whitespace-nowrap w-full">
-                                        {{ $table_category->name }}
-                                    </button>
-                                @endforeach
-                            </div> 
-                        </div>
-                        <div class="p-px">
-                            <button class="w-9 aspect-square border border-neutral-300 rounded-lg scroll-right table">
-                                <i class="uil uil-arrow-right text-2xl"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="tableAllContents" class="h-[calc(100vh-194px)] overflow-y-auto">
-                    <div id="tableTabContent" class="h-auto min-h-full  bg-gray-100">
-
-                        {{-- All Tables Tab --}}
-                        <div class="p-8" id="all-table" role="tabpanel" aria-labelledby="all-table-tab">
-                            <div class="w-full grid grid-cols-5 gap-6">
-                                @foreach ($tables as $table)
-                                    @if ($table->is_deleted != 1)
-                                        <div class="{{ $table->status == 0 ? 'bg-emerald-500' : ($table->status == 2 ? 'bg-amber-400' : 'bg-red-500') }} w-full aspect-square h-auto rounded-xl">
-                                            <button type="button" data-table="{{ $table->id }}" data-tablename="{{ $table->name }}" data-status="{{ $table->status }}" class="w-full h-full relative tableButton rounded-xl">
-                                                <p class="absolute top-1/3 -translate-y-1/2 w-full text-center text-2xl font-bold">{{ $table->name }}</p>
-                                                <img src="{{ asset('storage/images/ico/table-noBG.png') }}" alt="" class="w-4/5 absolute bottom-0 left-1/2 -translate-x-1/2">
-                                            </button>
-                                        </div>
-                                    @endif
-                                @endforeach
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+                                <p class="text-sm font-semibold text-emerald-800">PAID TOTAL</p>
+                                <p class="mt-1 text-2xl font-bold text-emerald-900">₱ {{ number_format($arPaidTotal, 2) }}</p>
+                            </div>
+                            <div class="rounded-lg border border-red-200 bg-red-50 p-4">
+                                <p class="text-sm font-semibold text-red-800">UNPAID TOTAL</p>
+                                <p class="mt-1 text-2xl font-bold text-red-900">₱ {{ number_format($arUnpaidTotal, 2) }}</p>
                             </div>
                         </div>
+                    </div>
+                </section>
 
-                        {{-- Category-Specific Tabs --}}
-                        @foreach ($table_cat as $table_category)
-                            <div class="p-8 hidden" id="{{ $table_category->slug }}-table" role="tabpanel" aria-labelledby="{{ $table_category->slug }}-tab">
-                                <div class="w-full grid grid-cols-5 gap-6">
-                                    @foreach ($tables as $table)
-                                        @if ($table->tblcats == $table_category->id && $table->is_deleted != 1)
-                                            <div class="{{ $table->status == 0 ? 'bg-emerald-500' : ($table->status == 2 ? 'bg-amber-400' : 'bg-red-500') }} w-full aspect-square h-auto rounded-xl">
-                                                <button type="button" data-table="{{ $table->id }}" data-tablename="{{ $table->name }}" class="w-full h-full relative tableButton rounded-xl">
-                                                    <p class="absolute top-1/3 -translate-y-1/2 w-full text-center text-2xl font-bold">{{ $table->name }}</p>
-                                                    <img src="{{ asset('storage/images/ico/table-noBG.png') }}" alt="" class="w-4/5 absolute bottom-0 left-1/2 -translate-x-1/2">
-                                                </button>
-                                            </div>
-                                        @endif
-                                    @endforeach
+                <div id="arClientList" class="h-[calc(100vh-260px)] space-y-3 overflow-y-auto bg-slate-50 p-4">
+                    @forelse ($arClients as $client)
+                        <details class="ar-client-card rounded-xl border border-red-200 bg-white shadow-sm" data-search="{{ strtolower($client->name) }}">
+                            <summary class="cursor-pointer list-none rounded-xl bg-red-50 p-4 text-red-900">
+                                <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                    <div>
+                                        <h2 class="text-lg font-bold">{{ $client->name }}</h2>
+                                        <p class="text-sm text-red-700">{{ $client->transaction_count }} unpaid transaction(s)</p>
+                                    </div>
+                                    <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm font-semibold">
+                                        <span>Unpaid: ₱ {{ number_format($client->unpaid_total, 2) }}</span>
+                                        <span>Available credit: ₱ {{ number_format($client->credit_limit, 2) }}</span>
+                                    </div>
                                 </div>
-                            </div>
-                        @endforeach
+                            </summary>
+                            <div class="space-y-3 p-3">
+                                @foreach ($client->transactions as $transaction)
+                                    <details class="ar-transaction rounded-lg border border-slate-200 bg-white"
+                                        data-search="{{ strtolower($transaction->number . ' ' . $transaction->payor_name) }}">
+                                        <summary class="cursor-pointer list-none bg-slate-100 p-3">
+                                            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                                <div>
+                                                    <span class="font-bold text-slate-800">Transaction {{ $transaction->number }}</span>
+                                                    <span class="ml-2 text-sm text-slate-500">{{ \Carbon\Carbon::parse($transaction->created_at)->format('M d, Y h:i A') }}</span>
+                                                    <p class="mt-1 text-sm text-slate-500">Payor: {{ $transaction->payor_name }}</p>
+                                                </div>
+                                                <div class="flex flex-wrap gap-x-5 text-sm font-semibold">
+                                                    <span>Paid: ₱ {{ number_format($transaction->paid_amount, 2) }}</span>
+                                                    <span class="text-red-700">Balance: ₱ {{ number_format($transaction->balance_due, 2) }}</span>
+                                                </div>
+                                            </div>
+                                        </summary>
+                                        <div class="space-y-4 p-3">
+                                            <div>
+                                                <h3 class="mb-2 font-semibold text-slate-700">Items</h3>
+                                                <div class="divide-y divide-slate-100 rounded-lg border border-slate-200">
+                                                    @forelse ($transaction->items as $item)
+                                                        <div class="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
+                                                            <label class="flex items-center gap-2">
+                                                                <input type="checkbox" class="ar-void-item" data-tran-id="{{ $transaction->id }}"
+                                                                    data-slug="{{ $item->slug }}">
+                                                                <span class="font-medium">{{ $item->menu_name ?? 'Unavailable item' }}</span>
+                                                                <span class="text-slate-500">× {{ $item->quantity }}</span>
+                                                            </label>
+                                                            <span class="font-semibold">₱ {{ number_format($item->amount, 2) }}</span>
+                                                        </div>
+                                                    @empty
+                                                        <p class="p-3 text-sm text-slate-500">No items found for this transaction.</p>
+                                                    @endforelse
+                                                </div>
+                                            </div>
 
-                    </div>
+                                            <div>
+                                                <h3 class="mb-2 font-semibold text-slate-700">Payment history</h3>
+                                                <div class="divide-y divide-slate-100 rounded-lg border border-slate-200">
+                                                    @forelse ($transaction->payments as $payment)
+                                                        <div class="flex flex-wrap justify-between gap-2 p-3 text-sm">
+                                                            <span>{{ $payment->label }} · {{ $payment->payment_date ?: $payment->created_at }}</span>
+                                                            <span class="font-semibold">₱ {{ number_format($payment->amount, 2) }}</span>
+                                                        </div>
+                                                    @empty
+                                                        <p class="p-3 text-sm text-slate-500">No payments recorded.</p>
+                                                    @endforelse
+                                                </div>
+                                            </div>
+
+                                            @if (Auth::user()->role != 7)
+                                                <div class="flex flex-wrap gap-2 border-t border-slate-200 pt-3">
+                                                    <button type="button" class="arPayButton rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-700"
+                                                        data-transaction-id="{{ $transaction->id }}" data-balance="{{ $transaction->balance_due }}">
+                                                        Record payment
+                                                    </button>
+                                                    <button type="button" class="arVoidSelected rounded-lg bg-amber-600 px-4 py-2 font-semibold text-white hover:bg-amber-700"
+                                                        data-transaction-id="{{ $transaction->id }}" data-slug="{{ $transaction->slug }}">
+                                                        Void selected items
+                                                    </button>
+                                                    <button type="button" class="arVoidTransaction rounded-lg bg-red-700 px-4 py-2 font-semibold text-white hover:bg-red-800"
+                                                        data-slug="{{ $transaction->slug }}">
+                                                        Void transaction
+                                                    </button>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </details>
+                                @endforeach
+                            </div>
+                        </details>
+                    @empty
+                        <div class="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500">
+                            No unpaid Pay Later transactions.
+                        </div>
+                    @endforelse
                 </div>
             </div>
         </div>
@@ -1745,6 +1796,8 @@
             var slug;
             var table;
             var id;
+            var arTransactionId = null;
+            var arBalanceDue = 0;
             var _token = $('input[name="_token"]').val();
             $('#serveAmount').text($('#auditVal').val());
             $('#notServeAmount').text($('#notAuditVal').val());
@@ -1981,6 +2034,7 @@
 
 
             jQuery(document).on("click", "#paidButton", function(){
+                arTransactionId = null;
                 $.ajax({
                         url:"{{ route('orders.getAmount') }}",
                         method:"POST",
@@ -2018,6 +2072,18 @@
                         }
                 })
                 
+            });
+
+            jQuery(document).on("click", ".arPayButton", function(){
+                arTransactionId = $(this).data('transaction-id');
+                arBalanceDue = parseFloat($(this).data('balance')) || 0;
+                $('#actualAmount').html(arBalanceDue.toFixed(2));
+                $('#actualAmount2').html(arBalanceDue.toFixed(2));
+                $('#payNowButton').data('amount', arBalanceDue);
+                $('#cashMop, #ccMop, #visaMop, #gcashMop, #wcpMop, #amexMop, #bdoMop, #bancnetMop, #dinersMop, #dpMop, #giftMop, #jcbMop, #mayaMop, #grabPayMop, #unionMop, #grabMop, #pandaMop, #qrphMop').val('');
+                $('#totalPayment').text('0');
+                $('#amountError').addClass('hidden');
+                $('#openMOPModal').click();
             });
             jQuery(document).on("click", "#deleteDiscountButton", function(){
                 $('#openRemoveDiscountModal').click();
@@ -2139,6 +2205,7 @@
                 //alert( amount + ' s '+ amountInput)
                 var namountInput = parseFloat(amountInput);
                 var mop = $('#mop').val();
+                var payingArTransaction = arTransactionId;
 
                 var cashMop = ( $('#cashMop').val() == '' ) ? 0 : parseFloat( $('#cashMop').val() );
                 var ccMop = ( $('#ccMop').val() == '' ) ? 0 : parseFloat( $('#ccMop').val() );
@@ -2160,17 +2227,30 @@
                 var qrphMop = ( $('#qrphMop').val() == '' ) ? 0 : parseFloat( $('#qrphMop').val() );
 
 
-                if(namountInput >= amount){
+                if (payingArTransaction) {
+                    if (namountInput <= 0 || namountInput > arBalanceDue) {
+                        $('#amountError').removeClass('hidden');
+                        return;
+                    }
+                } else if(namountInput < amount){
+                    $('#amountError').removeClass('hidden');
+                    return;
+                }
+
+                if (payingArTransaction || namountInput >= amount) {
                     $('#loadingScreen').removeClass('hidden');
-                    var change = amountInput - amount;
-                    $('#payNowCancelButton').click();
-                    $('#changeP').html(change);
+                    if (!payingArTransaction) {
+                        var change = amountInput - amount;
+                        $('#payNowCancelButton').click();
+                        $('#changeP').html(change);
+                    }
 
                     $.ajax({
                         url:"{{ route('orders.paid') }}",
                         method:"POST",
                         data:{
                             id: id,
+                            ar_transaction_id: payingArTransaction,
                             amountInput: amountInput,
                             mop: mop,
                             cashMop : cashMop,
@@ -2194,11 +2274,27 @@
                             _token: _token
                         },
                         success:function(result){
+                            if (payingArTransaction) {
+                                $('#loadingScreen').addClass('hidden');
+                                if (result.msg === 'success') {
+                                    location.reload();
+                                } else {
+                                    alert(result.error || 'Unable to record the AR payment.');
+                                }
+                                return;
+                            }
                             $('#openChangeModal').click();
                             $('#loadingScreen').addClass('hidden');
+                        },
+                        error:function(xhr){
+                            $('#loadingScreen').addClass('hidden');
+                            var message = xhr.responseJSON && xhr.responseJSON.error
+                                ? xhr.responseJSON.error
+                                : 'Unable to record the payment.';
+                            alert(message);
                         }
                     })
-                }else{
+                } else {
                     $('#amountError').removeClass('hidden');
                 }
             });
@@ -2511,14 +2607,52 @@
                 
                 var slug = $(this).data('slug');
                 
-                $('#acceptMultipleVoidButton').data('slug', slug);
+                $('#acceptMultipleVoidButton').data('slug', slug).data('void-transaction', false);
                 $('#openMultipleVoidModal').click();
                 //$('.tableIDforDiscount').val(id);
                 
             });
 
+            jQuery(document).on("click", ".arVoidSelected", function(){
+                var transactionId = $(this).data('transaction-id');
+                var transactionSlug = $(this).data('slug');
+                var itemInputs = $('.ar-void-item[data-tran-id="' + transactionId + '"]');
+                var selectedCount = itemInputs.filter(':checked').length;
+
+                if (selectedCount === 0) {
+                    alert('Select at least one item to void.');
+                    return;
+                }
+
+                var requests = [];
+                itemInputs.each(function(){
+                    requests.push($.ajax({
+                        url: "{{ route('orders.multivoidcheck') }}",
+                        method: "POST",
+                        data: {
+                            slug: $(this).data('slug'),
+                            checkbox: $(this).is(':checked'),
+                            _token: _token
+                        }
+                    }));
+                });
+
+                $.when.apply($, requests).done(function(){
+                    $('#acceptMultipleVoidButton').data('slug', transactionSlug).data('void-transaction', false);
+                    $('#openMultipleVoidModal').click();
+                }).fail(function(){
+                    alert('Unable to prepare the selected items for voiding.');
+                });
+            });
+
+            jQuery(document).on("click", ".arVoidTransaction", function(){
+                $('#acceptMultipleVoidButton').data('slug', $(this).data('slug')).data('void-transaction', true);
+                $('#openMultipleVoidModal').click();
+            });
+
             jQuery(document).on("click", "#acceptMultipleVoidButton", function(){
                 var slug = $(this).data('slug');
+                var voidTransaction = $(this).data('void-transaction') === true;
                 voidCode = $('#voidCodeMultiple').val();
 
                 // 
@@ -2533,6 +2667,7 @@
                     data:{
                         slug: slug,
                         voidCode : voidCode,
+                        void_transaction: voidTransaction,
                         _token: _token
                     },
                     success:function(result){
@@ -2864,44 +2999,12 @@
                 });
             });
 
-            // leo start 4/22/25
-            $('#tableTabs').on('click', '[role="tab"]', function () {
-            const targetId = $(this).data('tabs-target');
-  
-            $('#tableTabs [role="tab"]')
-                .removeClass('border-blue-500 bg-blue-100 text-blue-800')
-                .addClass('border-gray-300 text-gray-800')
-                .attr('aria-selected', 'false');
-
-            $(this)
-                .removeClass('border-gray-300 text-gray-800')
-                .addClass('border-blue-600 bg-blue-100 text-blue-800')
-                .attr('aria-selected', 'true');
-
-            $('#tableTabContent > div').addClass('hidden');
-            $(targetId).removeClass('hidden');
-            });     
-
-            $('#searchTable').on('keyup', function () {
-                const value = $(this).val().toLowerCase();
-                $('#all-table-tab').click();
-                $("#all-table .table, #all-table .tableButton").each(function () {
-                    $(this).toggle($(this).text().toLowerCase().includes(value));
+            $('#searchArClient').on('input', function(){
+                var search = $(this).val().toLowerCase();
+                $('.ar-client-card').each(function(){
+                    $(this).toggle($(this).text().toLowerCase().includes(search));
                 });
             });
-            // leo end 4/22/25
-
-            //leo start 4-22-25
-            $('.scroll-left.table').click(function() {
-                var divW = ($('#tableTabs').width() * 2) / 3;
-                $('#tableTabs').animate({scrollLeft: '-=' + divW + 'px'}, 'slow');
-            });
-
-            $('.scroll-right.table').click(function() {
-                var divW = ($('#tableTabs').width() * 2) / 3;
-                $('#tableTabs').animate({scrollLeft: '+=' + divW + 'px'}, 'slow');
-            });
-            //leo end 4-22-25
 
         });
     </script>

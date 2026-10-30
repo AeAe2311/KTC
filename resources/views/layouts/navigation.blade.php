@@ -206,7 +206,27 @@
                                 <span class="flex-1 ml-3 whitespace-nowrap">Trial Balance</span>
                             </a>
                         </li>  
-                        {{-- LINE 209: end of trial balance nav button added by ken 7-29-2026 --}}                                             
+                        {{-- LINE 209: end of trial balance nav button added by ken 7-29-2026 --}}    
+                        {{-- START: Sale Payment & AR Collection added --}}
+                        <li>
+                            <a href="{{ route('admin.accounting-reports.sale-payment') }}"
+                            class="{{ Str::contains(url()->current(), url('/admin/accounting-reports/sale-payment'))
+                                    ? 'flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-white hover:shadow-md hover:border-gray-200 bg-gray-200 border border-gray-300 shadow-inner'
+                                    : 'flex items-center p-2 text-base font-normal text-gray-900 rounded-lg border border-white hover:bg-white hover:shadow-md hover:border-gray-200';}}">
+                                <i class="text-2xl text-gray-500 uil uil-wallet"></i>
+                                <span class="flex-1 ml-3 whitespace-nowrap">Sale Payment</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('admin.accounting-reports.ar-collection') }}"
+                            class="{{ Str::contains(url()->current(), url('/admin/accounting-reports/ar-collection'))
+                                    ? 'flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-white hover:shadow-md hover:border-gray-200 bg-gray-200 border border-gray-300 shadow-inner'
+                                    : 'flex items-center p-2 text-base font-normal text-gray-900 rounded-lg border border-white hover:bg-white hover:shadow-md hover:border-gray-200';}}">
+                                <i class="text-2xl text-gray-500 uil uil-invoice"></i>
+                                <span class="flex-1 ml-3 whitespace-nowrap">AR Collection</span>
+                            </a>
+                        </li>
+                        {{-- END: Sale Payment & AR Collection added --}}                                                                 
                         {{-- <li>
                             <a href="{{ route('cashreceipt-journal.index') }}"
                             class="flex items-center w-full p-2 text-gray-900 transition duration-75 rounded-lg group hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700">
@@ -575,7 +595,7 @@
                     </ul>
                 </li>
                  {{-- ken end of update july 18, 2026 ken 20250623001 --}}
-                {{-- start of location transfer section by jet  --}}
+                {{-- START LINE 598: start of location transfer section by jet  --}}
                 <li>
                     <button type="button" class="{{ (Str::contains(url()->current(), url('/inventory/branch-transfer')) || Str::contains(url()->current(), url('/inventory/location-transfer'))) ? 'flex items-center p-2 text-base font-normal text-gray-900 rounded-lg hover:bg-white hover:shadow-md hover:border-gray-200 bg-gray-200 border border-gray-300 shadow-inner' : 'flex items-center p-2 text-base font-normal text-gray-900 rounded-lg border border-white hover:bg-white hover:shadow-md hover:border-gray-200';}}" aria-controls="locationTransferDropdown" data-collapse-toggle="locationTransferDropdown">
                         <i class="text-2xl text-gray-500 transition duration-75 uil uil-location-arrow group-hover:text-gray-900"></i>
@@ -608,7 +628,7 @@
                         </li>
                     </ul>
                 </li>
-                {{-- end of location transfer section by jet  --}}                
+                {{-- END LINE 631: end of location transfer section by jet  --}}                
                  
                 
                 <!-- 4-27 harold -->

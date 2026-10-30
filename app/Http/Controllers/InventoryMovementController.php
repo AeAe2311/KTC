@@ -362,12 +362,12 @@ class InventoryMovementController extends Controller
                 'sales_type' => $salesType,
                 'dispatch_date' => $transaction->created_at ? Carbon::parse($transaction->created_at)->format('Y-m-d H:i') : 'N/A',
                 'items' => $itemsData,
-                //20260528001 JET START lines 363 - 368
+                //LINE 365: 20260528001 JET START lines 365 - 370
                 'user_name' => $locationTransferInfo['user_name'] ?? $this->getCurrentInventoryMovementUserName($user),
                 'prepared_by' => $locationTransferInfo['prepared_by'] ?? '',
                 'checked_by' => $locationTransferInfo['checked_by'] ?? '',
                 'received_by' => $locationTransferInfo['received_by'] ?? '',
-                'approved_by' => $locationTransferInfo['approved_by'] ?? '', //20260528001 JET END
+                'approved_by' => $locationTransferInfo['approved_by'] ?? '', // LINE 370: 20260528001 JET END
                 // NEW FIELDS for popup
                 'shipping_company' => '',
                 'delivered_to' => '',
@@ -385,7 +385,7 @@ class InventoryMovementController extends Controller
             ], 500);
         }
     }
-    // LINE 388: START OF LOCATION TRANSFER INFO added by ken FROM JET DEV TASK 
+    // START LINE 388: START OF LOCATION TRANSFER INFO added by ken FROM JET DEV TASK 
     //20260528001 JET START lines 387 - 429
     private function getLocationTransferMovementInfo($movement): array
     {
@@ -464,7 +464,7 @@ class InventoryMovementController extends Controller
 
         return $metadata;
     } //20260528001 JET END
-    // LINE 391: END OF LOCATION TRANSFER INFO added by ken FROM JET DEV TASK
+    // END LINE 391: END OF LOCATION TRANSFER INFO added by ken FROM JET DEV TASK
 
     //ken START updated 8-18-2026 print pdfreport
     public function printReport(Request $request)

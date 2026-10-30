@@ -91,30 +91,6 @@ ________________________________________________________________________________
 //////////////////////////////////////////////////////////////////////////////////////////////////
 --------------------------------------------------------------------------------------------------
 
-INVENTORY MOVEMENT README for sort order
-
-CONTROLLER:
-PATH: C:\xampp\htdocs\_kumpadres-dev-sept21\app\Http\Controllers\InventoryMovementController.php
-FILE: InventoryMovementController.php -- UPDATES
-// LINE 177: START OF SORTING DIRECTION added by ken 10-15-2026
-// LINE 186: END OF SORTING DIRECTION added by ken 10-15-2026
-// LINE 1090: START OF SORTING DIRECTION added by ken 10-15-2026
-// LINE 1097: END OF SORTING DIRECTION added by ken 10-15-2026
-// LINE 1224: START OF SORTING DIRECTION added by ken 10-15-2026
-// LINE 1231: END OF SORTING DIRECTION added by ken 10-15-2026
-
-
-VIEW:
-PATH: C:\xampp\htdocs\_kumpadres-dev-sept21\resources\views\user\inventory\movement\index.blade.php
-FILE: index.blade.php -- UPDATES
-<!-- LINE 156: START OF SORT DIRECTION TOGGLE BUTTON AND RESET BUTTON UPDATE BY KEN 10-15-2026 -->
-<!-- LINE 201: END OF SORT DIRECTION TOGGLE BUTTON AND RESET BUTTON UPDATE BY KEN 10-15-2026 -->
-// LINE 842: START of Sort Direction Toggle added by ken 10-15-2026
-// LINE 853: END of Sort Direction Toggle added by ken 10-15-2026
-
-__________________________________________________________________________________________________
-//////////////////////////////////////////////////////////////////////////////////////////////////
---------------------------------------------------------------------------------------------------
 
 MENU RANKING
 
@@ -227,12 +203,67 @@ PATH: C:\xampp\htdocs\kumpadres-centralized_edit-newest\app\Http\Controllers\Men
 __________________________________________________________________________________________________
 //////////////////////////////////////////////////////////////////////////////////////////////////
 --------------------------------------------------------------------------------------------------
+
+INVENTORY MOVEMENT README for sort order
+
+CONTROLLER:
+PATH: C:\xampp\htdocs\_kumpadres-dev-sept21\app\Http\Controllers\InventoryMovementController.php
+FILE: InventoryMovementController.php -- UPDATES
+// LINE 177: START OF SORTING DIRECTION added by ken 10-15-2026
+// LINE 186: END OF SORTING DIRECTION added by ken 10-15-2026
+// LINE 1090: START OF SORTING DIRECTION added by ken 10-15-2026
+// LINE 1097: END OF SORTING DIRECTION added by ken 10-15-2026
+// LINE 1224: START OF SORTING DIRECTION added by ken 10-15-2026
+// LINE 1231: END OF SORTING DIRECTION added by ken 10-15-2026
+
+
+VIEW:
+PATH: C:\xampp\htdocs\_kumpadres-dev-sept21\resources\views\user\inventory\movement\index.blade.php
+FILE: index.blade.php -- UPDATES
+<!-- LINE 156: START OF SORT DIRECTION TOGGLE BUTTON AND RESET BUTTON UPDATE BY KEN 10-15-2026 -->
+<!-- LINE 201: END OF SORT DIRECTION TOGGLE BUTTON AND RESET BUTTON UPDATE BY KEN 10-15-2026 -->
+// LINE 842: START of Sort Direction Toggle added by ken 10-15-2026
+// LINE 853: END of Sort Direction Toggle added by ken 10-15-2026
+
+__________________________________________________________________________________________________
+//////////////////////////////////////////////////////////////////////////////////////////////////
+--------------------------------------------------------------------------------------------------
 LOCATION TRANSFER README
 
+CONTROLLER: 
+PATH: C:\xampp\htdocs\_kumpadres-dev-sept21\app\Http\Controllers\BranchTransferController.php
+FILE: BranchTransferController.php ---(WHOLE FILE)
+
+PATH: C:\xampp\htdocs\_kumpadres-dev-sept21\app\Http\Controllers\InventoryMovementController.php
+FILE: InventoryMovementController.php -- UPDATES
+//LINE 365: 20260528001 JET START lines 365 - 370
+// LINE 370: 20260528001 JET END
+// START LINE 388: START OF LOCATION TRANSFER INFO added by ken FROM JET DEV TASK
+// END LINE 391: END OF LOCATION TRANSFER INFO added by ken FROM JET DEV TASK
 
 
+VIEWS:
+PATH: C:\xampp\htdocs\_kumpadres-dev-sept21\resources\views\user\inventory\branch-transfer-pending.blade.php
+FILE: branch-transfer-pending.blade -- NEW FILE
 
+PATH: C:\xampp\htdocs\_kumpadres-dev-sept21\resources\views\user\inventory\branch-transfer-received.blade.php
+FILE: branch-transfer-received.blade.php -- NEW FILE
 
+PATH: C:\xampp\htdocs\_kumpadres-dev-sept21\resources\views\user\inventory\branch-transfer.blade.php
+FILE: branch-transfer.blade.php -- NEW FILE
+
+LAYOUT:navigation.blade.php
+{{-- START LINE 598: start of location transfer section by jet  --}}
+{{-- END LINE 631: end of location transfer section by jet  --}}
+
+ROUTE: web.php
+// START LINE 574: Branch Transfer 20260528001 JET START LINES 574 - 590
+// END LINE 590: 20260528001 JET END
+
+SQL: NEW Column to Table: branch_request
+quantity_breakdown ==> longtext ==> nullable
+breakdown_statuses ==> longtext ==> nullable
+remarks ==> varchar(255) ==> nullable
 __________________________________________________________________________________________________
 //////////////////////////////////////////////////////////////////////////////////////////////////
 --------------------------------------------------------------------------------------------------
@@ -240,6 +271,52 @@ ORDER PAGE README
 
 CONTROLLER:
 
+
+
+
+SQL: 
+Table: ordered_cogs  == NEW COLLUMN
+tran_uuid(varchar 255) = Null
+
+Table: payment_logs == NNEW COLLUMN
+tran_uuid(varchar 255) = Null
+
+Table: ordered_duplicate == NNEW COLLUMN
+tran_uuid(varchar 255) = Null
+__________________________________________________________________________________________________
+//////////////////////////////////////////////////////////////////////////////////////////////////
+--------------------------------------------------------------------------------------------------
+PURCHASE ORDER
+
+
+
+SQL:
+NEW TABLE: po_cart
+
+Table: purchase_ordered  New Collumn
+price_type(varchar 255)
+sell_price(decimal 15,3)
+
+__________________________________________________________________________________________________
+//////////////////////////////////////////////////////////////////////////////////////////////////
+--------------------------------------------------------------------------------------------------
+EXPENSES APPROVAL README 
+
+CONTROLLER:
+C:\xampp\htdocs\_kumpadres-dev-sept21\app\Http\Controllers\POSController.php
+C:\xampp\htdocs\_kumpadres-dev-sept21\app\Http\Controllers\OrderedController.php
+C:\xampp\htdocs\_kumpadres-dev-sept21\app\Http\Controllers\SaveSaleReportController.php
+
+
+
+SQL: NEW COLUMN FOR TABLE inventory_etransaction
+ALTER TABLE `inventory_etransaction`
+ADD COLUMN `deletion_requested_by` BIGINT(20) UNSIGNED DEFAULT NULL,
+ADD COLUMN `deletion_requested_at` TIMESTAMP NULL DEFAULT NULL,
+ADD COLUMN `deletion_reason` TEXT DEFAULT NULL,
+ADD COLUMN `deletion_reviewed_by` BIGINT(20) UNSIGNED DEFAULT NULL,
+ADD COLUMN `deletion_reviewed_at` TIMESTAMP NULL DEFAULT NULL,
+ADD COLUMN `deletion_reject_comment` TEXT DEFAULT NULL;
 
 
 __________________________________________________________________________________________________

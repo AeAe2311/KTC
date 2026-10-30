@@ -786,7 +786,7 @@
                         <div class="mb-6">
                         
                             <label for="base-input" class="block mb-2 text-sm font-medium text-gray-900">Name</label>
-                            <input type="text" id="payor_name_pl" name="payor_name_pl" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                            <input type="text" id="payor_name_pl" name="payor_name_pl" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" required>
                             <input type="hidden" id="paymentMethod"  value="0">
                         </div>
                         <div class="mb-6">
@@ -1582,7 +1582,7 @@
                                             <div class=" row-span-1 flex items-center gap-2 mb-2">
                                                 @if(Auth::user()->role != 7)
                                                     <button id="payButton" type="button" class="w-full text-gray-50 bg-gradient-to-r from-green-600 to-teal-500 hover:bg-gradient-to-bl font-medium rounded-lg text-sm px-5 py-2.5 text-center">Pay</button>
-                                                    <!-- <button id="payLaterButton" type="button" class="w-full text-gray-50 bg-gradient-to-r from-purple-600 to-blue-500 hover:bg-gradient-to-bl font-medium rounded-lg text-sm px-5 py-2.5 text-center">Pay later</button> -->
+                                                    <button id="payLaterButton" type="button" class="w-full text-gray-50 bg-gradient-to-r from-purple-600 to-blue-500 hover:bg-gradient-to-bl font-medium rounded-lg text-sm px-5 py-2.5 text-center">Pay later</button>
                                                 @else
                                                     <button id="commitButton" type="button" class="w-full m-auto text-gray-50 bg-gradient-to-r from-emerald-600 to-green-500 hover:bg-gradient-to-bl font-medium rounded-lg text-sm px-5 py-2.5 text-center">Commit</button>
                                                 @endif
@@ -1639,6 +1639,7 @@
                 var name = $(this).data('tablename');
                 $('#table').val(id);
                 $('#tableName').text(name);
+                $('#payor_name_pl').val(id == '1' ? '' : name);
                 $('.tableButton').removeClass('ring-4 ring-inset ring-blue-500');
                 $(this).addClass('ring-4 ring-inset ring-blue-500');
 
@@ -2501,6 +2502,11 @@
                 var order_remarks = $('#order_remarks_pl').val();
                 var _token = $('input[name="_token"]').val();
 
+                if (!payor_name.trim()) {
+                    alert('Enter the client name for this Pay Later transaction.');
+                    return;
+                }
+
                 var limepercent = $('#limepercent').text();
                 var limediscountTotal = $('#limediscountTotalValue').text();
                 var scpercent = $('#scpercent').text();
@@ -2561,6 +2567,13 @@
                         $('#loadingScreen').addClass('hidden');
                         $('#cashierId').val('');
                         location.reload();
+                    },
+                    error:function(xhr){
+                        $('#loadingScreen').addClass('hidden');
+                        var message = xhr.responseJSON && xhr.responseJSON.message
+                            ? xhr.responseJSON.message
+                            : 'Unable to save the Pay Later transaction.';
+                        alert(message);
                     }
                 })
             });

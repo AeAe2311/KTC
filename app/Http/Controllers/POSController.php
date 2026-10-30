@@ -1414,22 +1414,35 @@ class POSController extends Controller {
     }
 
     public function paylater(Request $request) {
-        $amount = $request->amount;
-        $table = $request->table;
-        $sc_val = $request->input('sc_val', 0);
-        $payor_name = $request->payor_name;
-        $payor_number = $request->payor_number;
-        $order_remarks = $request->order_remarks;
-        //$sc_val = $request->sc_val;
-        $discountTotal = $request->discountTotal;
-        // $limepercent = $request->limepercent;
-        $limediscountTotal = $request->limediscountTotal;
+        $request->validate([
+            'amount' => ['required', 'numeric', 'gt:0'],
+            'table' => ['required', 'integer', 'exists:tables,id'],
+            'payor_name' => ['required', 'string', 'max:255'],
+        ]);
+        abort_unless(
+            DB::table('tables')
+                ->where('id', $request->input('table'))
+                ->where('store_code', auth()->user()->store_code)
+                ->exists(),
+            404
+        );
 
-        $LessVatDeduction = $request->LessVatDeduction;
-        $VatExemptSales = $request->VatExemptSales;
-        $vatsales = $request->vatsales;
-        $vat = $request->vat;
-        $numPacks = $request->numPacks;
+        $amount = (float) $request->input('amount', 0);
+        $table = $request->input('table');
+        $sc_val = (float) $request->input('sc_val', 0);
+        $payor_name = $request->input('payor_name');
+        $payor_number = $request->input('payor_number');
+        $order_remarks = $request->input('order_remarks');
+        //$sc_val = $request->sc_val;
+        $discountTotal = (float) $request->input('discountTotal', 0);
+        // $limepercent = $request->limepercent;
+        $limediscountTotal = (float) $request->input('limediscountTotal', 0);
+
+        $LessVatDeduction = (float) $request->input('LessVatDeduction', 0);
+        $VatExemptSales = (float) $request->input('VatExemptSales', 0);
+        $vatsales = (float) $request->input('vatsales', 0);
+        $vat = (float) $request->input('vat', 0);
+        $numPacks = (int) $request->input('numPacks', 0);
 
 
         
@@ -1444,21 +1457,50 @@ class POSController extends Controller {
         }
 
 
-        $this_tran = DB::table('transactions')->where('table', $table)->where('status', 'UNPAID')->where('order_status', '!=', 'CANCELLED')->where('order_status', '!=', 'COMPLETED')->first();
+        $this_tran = Transaction::where('table', $table)
+            ->where('store_code', auth()->user()->store_code)
+            ->where('status', 'UNPAID')
+            ->where('order_status', '!=', 'CANCELLED')
+            ->where('order_status', '!=', 'COMPLETED')
+            ->first();
         if ($this_tran) {
+            $tran = $this_tran;
             $tran_id = $this_tran->id;
 
-            DB::table('transactions')->where('id', $tran_id)->update([
-                'total' => DB::raw('total + '.$amount),
-                'service_charge' => DB::raw('service_charge + '.$sc_val),
-                'pwd' => DB::raw('pwd + '.$discountTotal),
-                'ld_value' => DB::raw('ld_value + '.$limediscountTotal),
-                'lessVatDeduction' => DB::raw('lessVatDeduction + '.$LessVatDeduction),
-                'vat' => DB::raw('vat + '.$vat),
-                'vatSales' => DB::raw('vatSales + '.$vatsales),
-                'vatExemptSales' => DB::raw('vatExemptSales + '.$VatExemptSales),
-                'order_remarks' => $order_remarks
-            ]);
+            DB::transaction(function () use (
+                $tran_id,
+                $amount,
+                $sc_val,
+                $discountTotal,
+                $limediscountTotal,
+                $LessVatDeduction,
+                $vat,
+                $vatsales,
+                $VatExemptSales,
+                $payor_name,
+                $order_remarks,
+                $table
+            ) {
+                DB::table('transactions')->where('id', $tran_id)->update([
+                    'total' => DB::raw('total + '.$amount),
+                    'service_charge' => DB::raw('service_charge + '.$sc_val),
+                    'pwd' => DB::raw('pwd + '.$discountTotal),
+                    'ld_value' => DB::raw('ld_value + '.$limediscountTotal),
+                    'lessVatDeduction' => DB::raw('lessVatDeduction + '.$LessVatDeduction),
+                    'vat' => DB::raw('vat + '.$vat),
+                    'vatSales' => DB::raw('vatSales + '.$vatsales),
+                    'vatExemptSales' => DB::raw('vatExemptSales + '.$VatExemptSales),
+                    'payor_name' => ucfirst($payor_name),
+                    'mode_of_payment' => 'AR',
+                    'order_remarks' => $order_remarks
+                ]);
+                DB::table('tables')
+                    ->where('id', $table)
+                    ->where('store_code', auth()->user()->store_code)
+                    ->update([
+                        'credit_limit' => DB::raw('COALESCE(credit_limit, 0) - ' . number_format($amount, 2, '.', '')),
+                    ]);
+            });
         } else {
 
             $id = Transaction::latest()->pluck('id')->first();
@@ -1484,13 +1526,14 @@ class POSController extends Controller {
             $SCPercent = $SCRow->percent ?? 0;
             $limeDiscountRow = DB::table('lime_discount')->where('user_id', auth()->id())->first();
             //$limePercent = $limeVal = 0;
-            $limePercent = $limeDiscountRow->percent;
+            $limePercent = $limeDiscountRow->percent ?? 0;
 
             $tranSlug = $ntranSlug;
 
             $tran = new Transaction();
             $tran->number = $number;
             $tran->total = $amount;
+            $tran->mode_of_payment = 'AR';
             $tran->payor_name = ucfirst($payor_name);
             $tran->payor_number = $payor_number;
             $tran->type = $type;
@@ -1501,7 +1544,7 @@ class POSController extends Controller {
             $tran->order_status = 'PREPARING';
             $tran->cashier = $cashierId;
             $tran->slug = $tranSlug;
-            $tran->customer_with_discount = $discountRow->customer_with_discount;
+            $tran->customer_with_discount = $discountRow->customer_with_discount ?? 0;
             $tran->total_customer = $numPacks;
             $tran->pwd = $discountTotal;
             $tran->service_charge = $sc_val;
@@ -1515,8 +1558,17 @@ class POSController extends Controller {
             $tran->vat = $vat;
             $tran->is_uuid = (string) Str::uuid();
             $tran->local_id = null;
+            $tran->store_code = auth()->user()->store_code;
             $tran->staff_id = auth()->id();
-            $tran->save();
+            DB::transaction(function () use ($tran, $table, $amount) {
+                $tran->save();
+                DB::table('tables')
+                    ->where('id', $table)
+                    ->where('store_code', auth()->user()->store_code)
+                    ->update([
+                        'credit_limit' => DB::raw('COALESCE(credit_limit, 0) - ' . number_format($amount, 2, '.', '')),
+                    ]);
+            });
 
             $tran_id = $tran->id;
         }
@@ -1532,7 +1584,7 @@ class POSController extends Controller {
         //lime discount section
         $limeDiscountRow = DB::table('lime_discount')->where('user_id', auth()->id())->first();
         //$limePercent = $limeVal = 0;
-        $limePercent = $limeDiscountRow->percent;
+        $limePercent = $limeDiscountRow->percent ?? 0;
 
         //ken update start here - ken 252306001 -- 3-19-26
         // Batch insert to reduce query count and avoid slow per-row operations
@@ -1548,16 +1600,17 @@ class POSController extends Controller {
             $SCPercent = $SCRow->percent ?? 0;
             $subtotal = $order->total_price;
             $discount = 0;
-            if ($discountRow->total_customer > 0) {
-                $x = $subtotal / $discountRow->total_customer;
-                $y = 0.2 * round($discountRow->customer_with_discount, 2);
+            $discountCustomerCount = (float) ($discountRow->total_customer ?? 0);
+            if ($discountCustomerCount > 0) {
+                $x = $subtotal / $discountCustomerCount;
+                $y = 0.2 * round((float) ($discountRow->customer_with_discount ?? 0), 2);
                 $discount = round($x * $y, 2);
             }
             $SCVal = ($SCPercent / 100) * $subtotal;
             $limeVal = ($limePercent / 100) * $subtotal;
 
             $orderedInserts[] = [
-                'tran_id' => null,
+                'tran_id' => $tran_id,
                 'tran_uuid' => $tran->is_uuid,
                 'is_uuid' => $orderedUuid,
                 'menu_id' => $order->menu_id,
@@ -1673,7 +1726,7 @@ class POSController extends Controller {
             $amount = $total + $order->total_price;
         }
 
-        DB::table('tables')->where('id', $table)->update([
+        DB::table('tables')->where('id', $table)->where('store_code', auth()->user()->store_code)->update([
             'status' => 1
         ]);
 

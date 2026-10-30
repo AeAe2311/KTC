@@ -13,6 +13,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 
 class AddStockController extends Controller
@@ -49,8 +51,114 @@ class AddStockController extends Controller
             ->where('store_code', $user->store_code)
             ->orderBy('created_at', 'desc')
             ->paginate(15);
+
+        $cartItems = DB::table('po_cart')
+            ->where('user_id', $user->id)
+            ->where('store_code', $user->store_code)
+            ->orderBy('id')
+            ->get([
+                'menu_id',
+                'brand_name',
+                'item_name',
+                'quantity',
+                'unit',
+                'unit_price',
+                'price_type',
+                'sell_price',
+            ])
+            ->map(function ($item) {
+                return [
+                    'menu_id' => $item->menu_id,
+                    'brand_name' => $item->brand_name,
+                    'item_name' => $item->item_name,
+                    'quantity' => $item->quantity,
+                    'unit' => $item->unit,
+                    'price' => $item->unit_price,
+                    'price_type' => $item->price_type,
+                    'sell_price' => $item->sell_price,
+                ];
+            });
         
-        return view('user.inventory.add-stock', compact('brands', 'suppliers', 'menus', 'pendingOrders'));
+        return view('user.inventory.add-stock', compact('brands', 'suppliers', 'menus', 'pendingOrders', 'cartItems'));
+    }
+
+    public function syncCart(Request $request)
+    {
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'items' => 'present|array',
+            'items.*.menu_id' => [
+                'required',
+                'integer',
+                Rule::exists('menus', 'id')->where(function ($query) use ($user) {
+                    $query->where('store_code', $user->store_code)
+                        ->where('is_deleted', 0);
+                }),
+            ],
+            'items.*.quantity' => 'required|numeric|min:0.01',
+            'items.*.price' => 'required|numeric|min:0',
+            'items.*.price_type' => 'required|in:wholesale,retail,slab',
+            'items.*.sell_price' => 'required|numeric|min:0',
+            'items.*.unit' => 'nullable|string|max:50',
+        ]);
+
+        $items = collect($validated['items']);
+        $menus = Menu::with('brand')
+            ->where('store_code', $user->store_code)
+            ->where('is_deleted', 0)
+            ->whereIn('id', $items->pluck('menu_id')->unique())
+            ->get()
+            ->keyBy('id');
+
+        if ($menus->count() !== $items->pluck('menu_id')->unique()->count()) {
+            throw ValidationException::withMessages([
+                'items' => 'One or more selected items are no longer available in this store.',
+            ]);
+        }
+
+        $now = now();
+        $cartRows = $items->map(function ($item) use ($menus, $user, $now) {
+            $menu = $menus->get($item['menu_id']);
+            $quantity = (float) $item['quantity'];
+            $unitPrice = (float) $item['price'];
+
+            return [
+                'user_id' => $user->id,
+                'store_code' => $user->store_code,
+                'menu_id' => $menu->id,
+                'brand_id' => $menu->brand_id,
+                'brand_name' => $menu->brand?->name,
+                'item_name' => $menu->name,
+                'quantity' => $quantity,
+                'unit' => $item['unit'] ?? $menu->unit,
+                'buying_price' => $unitPrice,
+                'price_type' => $item['price_type'],
+                'sell_price' => $item['sell_price'],
+                'added_price' => null,
+                'unit_price' => $unitPrice,
+                'line_total' => round($quantity * $unitPrice, 2),
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        })->all();
+
+        DB::transaction(function () use ($user, $cartRows) {
+            DB::table('po_cart')
+                ->where('user_id', $user->id)
+                ->where('store_code', $user->store_code)
+                ->delete();
+
+            if ($cartRows) {
+                DB::table('po_cart')->insert($cartRows);
+            }
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Purchase-order cart saved.',
+            'count' => count($cartRows),
+        ]);
     }
 
     public function store(Request $request)
@@ -69,8 +177,23 @@ class AddStockController extends Controller
             'items.*.menu_id' => 'required|integer|exists:menus,id',
             'items.*.quantity' => 'required|numeric|min:0.01',
             'items.*.price' => 'required|numeric|min:0',
+            'items.*.price_type' => 'required|in:wholesale,retail,slab',
+            'items.*.sell_price' => 'required|numeric|min:0',
             'items.*.unit' => 'nullable|string|max:50',
         ]);
+
+        foreach ($request->items as $item) {
+            $menuExists = Menu::where('store_code', $user->store_code)
+                ->where('is_deleted', 0)
+                ->whereKey($item['menu_id'])
+                ->exists();
+
+            if (!$menuExists) {
+                throw ValidationException::withMessages([
+                    'items' => 'One or more selected items are no longer available in this store.',
+                ]);
+            }
+        }
         
         Log::info('Validation passed');
 
@@ -105,6 +228,11 @@ class AddStockController extends Controller
                 'status' => 'pending',
                 'remarks' => 'Awaiting approval'
             ]);
+
+            DB::table('po_cart')
+                ->where('user_id', $user->id)
+                ->where('store_code', $user->store_code)
+                ->delete();
             
             Log::info('Pending purchase order created:', ['id' => $pendingOrder->id]);
             
@@ -290,15 +418,29 @@ class AddStockController extends Controller
                 'items.*.menu_id' => 'required|integer|exists:menus,id',
                 'items.*.quantity' => 'required|numeric|min:0.01',
                 'items.*.price' => 'required|numeric|min:0',
+                'items.*.price_type' => 'nullable|in:wholesale,retail,slab',
+                'items.*.sell_price' => 'nullable|numeric|min:0',
                 'items.*.unit' => 'nullable|string|max:50',
             ]);
             
             $pendingOrder = PendingPurchaseOrder::where('store_code', $user->store_code)
                 ->where('status', 'pending')
                 ->findOrFail($id);
+
+            $existingItems = json_decode($pendingOrder->items_data, true) ?: [];
+            $items = $request->items;
+            foreach ($items as $index => &$item) {
+                if (!array_key_exists('price_type', $item) || $item['price_type'] === null) {
+                    $item['price_type'] = $existingItems[$index]['price_type'] ?? null;
+                }
+                if (!array_key_exists('sell_price', $item) || $item['sell_price'] === null) {
+                    $item['sell_price'] = $existingItems[$index]['sell_price'] ?? null;
+                }
+            }
+            unset($item);
             
             $totalAmount = 0;
-            foreach ($request->items as $item) {
+            foreach ($items as $item) {
                 $totalAmount += $item['quantity'] * $item['price'];
             }
             
@@ -306,7 +448,7 @@ class AddStockController extends Controller
             $updateData = [
                 'sales_invoice' => $request->sales_invoice,
                 'order_date' => $request->order_date,
-                'items_data' => json_encode($request->items),
+                'items_data' => json_encode($items),
                 'total_amount' => $totalAmount,
                 'remarks' => 'Updated by ' . $user->name . ' at ' . now()->format('Y-m-d H:i:s'),
             ];
@@ -335,162 +477,250 @@ class AddStockController extends Controller
     public function approvePurchaseOrder($id)
     {
         $user = Auth::user();
-        
+
         try {
             DB::beginTransaction();
-            
+
             $pendingOrder = PendingPurchaseOrder::where('store_code', $user->store_code)
                 ->where('status', 'pending')
+                ->lockForUpdate()
                 ->findOrFail($id);
-            
+
             Log::info('Approving purchase order:', ['id' => $pendingOrder->id]);
-            
+
             $items = json_decode($pendingOrder->items_data, true);
-            $supplier = Supplier::find($pendingOrder->supplier_id);
+
+            if (!is_array($items)) {
+                throw new \Exception('Invalid items_data on purchase order ID: ' . $pendingOrder->id);
+            }
+
+            $supplier     = Supplier::find($pendingOrder->supplier_id);
             $supplierName = $supplier ? $supplier->name : 'Unknown Supplier';
-            $refNumber = $pendingOrder->reference_number;
+            $refNumber    = $pendingOrder->reference_number;
             $salesInvoice = $pendingOrder->sales_invoice ?? '';
-            
+
+            Log::info('=== APPROVE PO — ITEMS SNAPSHOT ===', [
+                'po_id'       => $pendingOrder->id,
+                'ref'         => $refNumber,
+                'items_count' => count($items),
+                'raw_items'   => $items,
+            ]);
+
+            // Map of price_type => menu column
+            $priceColumnMap = [
+                'wholesale' => 'wholesale_price',
+                'retail'    => 'retail_price',
+                'slab'      => 'slab_price',
+            ];
+
             foreach ($items as $item) {
-                $menu = Menu::find($item['menu_id']);
-                
+                $menu = Menu::find($item['menu_id'] ?? null);
+
                 if (!$menu) {
-                    Log::warning("Menu not found for ID: {$item['menu_id']}");
+                    Log::warning('Menu not found for ID: ' . ($item['menu_id'] ?? 'NULL'));
                     continue;
                 }
-                
+
+                // ---------------------------------------------------------
+                // 1) Quantity (and unit)
+                // ---------------------------------------------------------
                 $quantityBefore = $menu->current_quantity ?? 0;
-                $newQuantity = $quantityBefore + $item['quantity'];
-                
+                $newQuantity    = $quantityBefore + $item['quantity'];
+
                 $updateData = [
                     'current_quantity' => $newQuantity,
-                    'quantity' => $newQuantity,
-                    'updated_at' => now()
+                    'quantity'         => $newQuantity,
+                    'updated_at'       => now(),
                 ];
-                
+
                 if (!empty($item['unit']) && $menu->unit != $item['unit']) {
                     $updateData['unit'] = $item['unit'];
                     Log::info("Updating unit for menu {$menu->id} from '{$menu->unit}' to '{$item['unit']}'");
                 }
-                
-                $updated = $menu->update($updateData);
-                
-                if (!$updated) {
-                    throw new \Exception("Failed to update menu quantity for menu ID: {$menu->id}");
+
+                // ---------------------------------------------------------
+                // 2) Smart selling-price update (wholesale / retail / slab)
+                //    Only update if PO sell_price is HIGHER than current.
+                // ---------------------------------------------------------
+                $priceType = strtolower(trim((string) ($item['price_type'] ?? '')));
+                $sellPrice = isset($item['sell_price']) && $item['sell_price'] !== ''
+                    ? (float) $item['sell_price']
+                    : null;
+
+                $priceColumn   = null;   // column we intend to change (if any)
+                $priceExpected = null;   // value we expect in DB afterwards
+
+                if ($sellPrice !== null && isset($priceColumnMap[$priceType])) {
+                    $priceColumn = $priceColumnMap[$priceType];
+                    $current     = $menu->{$priceColumn} !== null ? (float) $menu->{$priceColumn} : 0.0;
+
+                    if ($sellPrice > $current) {
+                        $updateData[$priceColumn] = $sellPrice;
+                        $priceExpected            = $sellPrice;
+                        Log::info("Price queued — Menu {$menu->id} [{$priceColumn}]: {$current} → {$sellPrice} (PO {$refNumber})");
+                    } else {
+                        Log::info("Price retained — Menu {$menu->id} [{$priceColumn}]: current {$current} ≥ PO {$sellPrice}");
+                        $priceColumn = null; // nothing to verify
+                    }
+                } else {
+                    $typeForLog = $item['price_type'] ?? 'N/A';
+                    Log::warning("Skipped price update — Menu {$menu->id}: invalid price_type '{$typeForLog}' or missing sell_price");
                 }
-                
-                $menu->refresh();
-                
-                Log::info("After update - Menu ID: {$menu->id}, New Quantity: {$menu->current_quantity}");
-                
-                $totalAmount = $item['quantity'] * $item['price'];
-                
-                $transaction = InventoryTransaction::create([
-                    'inv_id' => $menu->id,
-                    'type' => 'TRADE PAYABLE',
-                    'category_id' => 42,
-                    'quantity_before' => $quantityBefore,
-                    'quantity' => $item['quantity'],
-                    'quantity_after' => $newQuantity,
-                    'amount' => $totalAmount,
-                    'unit_price' => $item['price'],
-                    'exp_type' => 0,
-                    'remarks' => "$refNumber - Purchase - $supplierName",
-                    'unit' => $item['unit'] ?? $menu->unit,
-                    'user_id' => $user->id,
-                    'supplier_id' => $pendingOrder->supplier_id,
-                    'is_paid' => 'CHEQUE',
-                    'payment_class' => 1,
-                    'store_code' => $pendingOrder->store_code,
+
+                // forceFill bypasses $fillable/$guarded so price columns are never silently dropped
+                $menu->forceFill($updateData);
+                $dirty = $menu->getDirty();   // what will REALLY be written
+                $saved = $menu->save();
+
+                if (!$saved) {
+                    throw new \Exception("Failed to update menu quantity/price for menu ID: {$menu->id}");
+                }
+
+                $changes = $menu->getChanges(); // what Eloquent actually sent to the DB
+
+                // Re-read straight from the database (not from the in-memory model)
+                $fresh = Menu::find($menu->id);
+
+                Log::info('Menu save result', [
+                    'menu_id'     => $menu->id,
+                    'saved'       => $saved,
+                    'dirty'       => $dirty,
+                    'changes'     => $changes,
+                    'db_quantity' => $fresh->current_quantity,
+                    'db_price'    => $priceColumn ? $fresh->{$priceColumn} : 'n/a',
                 ]);
-                
+
+                // Hard verification: if we meant to change a price, it MUST be in the DB now
+                if ($priceColumn !== null) {
+                    $dbPrice = (float) $fresh->{$priceColumn};
+
+                    if (abs($dbPrice - $priceExpected) > 0.0001) {
+                        // Roll everything back instead of "succeeding" with stale prices.
+                        // Typical culprits: observer/mutator/trigger overriding the value.
+                        throw new \Exception(
+                            "Price not persisted for menu {$menu->id} [{$priceColumn}]: "
+                            . "expected {$priceExpected}, DB has {$dbPrice}. "
+                            . 'Check Menu observers, mutators, casts or DB triggers.'
+                        );
+                    }
+                }
+
+                $menu = $fresh;
+
+                Log::info("After update - Menu ID: {$menu->id}, New Quantity: {$menu->current_quantity}");
+
+                // ---------------------------------------------------------
+                // 3) Inventory transaction
+                // ---------------------------------------------------------
+                $totalAmount = $item['quantity'] * $item['price'];
+
+                $transaction = InventoryTransaction::create([
+                    'inv_id'          => $menu->id,
+                    'type'            => 'TRADE PAYABLE',
+                    'category_id'     => 42,
+                    'quantity_before' => $quantityBefore,
+                    'quantity'        => $item['quantity'],
+                    'quantity_after'  => $newQuantity,
+                    'amount'          => $totalAmount,
+                    'unit_price'      => $item['price'],
+                    'exp_type'        => 0,
+                    'remarks'         => "$refNumber - Purchase - $supplierName",
+                    'unit'            => $item['unit'] ?? $menu->unit,
+                    'user_id'         => $user->id,
+                    'supplier_id'     => $pendingOrder->supplier_id,
+                    'is_paid'         => 'CHEQUE',
+                    'payment_class'   => 1,
+                    'store_code'      => $pendingOrder->store_code,
+                ]);
+
                 if (!$transaction) {
                     throw new \Exception("Failed to create inventory transaction for menu ID: {$menu->id}");
                 }
-                
+
+                // ---------------------------------------------------------
+                // 4) Inventory movement
+                // ---------------------------------------------------------
                 $movement = InventoryMovement::create([
-                    'type' => 'STOCK IN',
-                    'ordered_id' => null,
-                    'void_id' => null,
-                    'menu_id' => $menu->id,
-                    'trans_id' => $transaction->id,
+                    'type'         => 'STOCK IN',
+                    'ordered_id'   => null,
+                    'void_id'      => null,
+                    'menu_id'      => $menu->id,
+                    'trans_id'     => $transaction->id,
                     'trans_number' => $refNumber,
-                    'si_number' => $salesInvoice, 
-                    'reference' => $refNumber,
-                    'detail' => $supplierName,
+                    'si_number'    => $salesInvoice,
+                    'reference'    => $refNumber,
+                    'detail'       => $supplierName,
                     'previous_qty' => $quantityBefore,
-                    'qty_in' => $item['quantity'],
-                    'qty_out' => 0,
-                    'remaining' => $newQuantity,
-                    'sold_price' => $item['price'],
-                    'cost' => $totalAmount,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                    'branch_code' => $user->branch_code ?? '',
-                    'store_code' => $pendingOrder->store_code,
-                    'is_uuid' => null,
-                    'is_sync' => '0'
+                    'qty_in'       => $item['quantity'],
+                    'qty_out'      => 0,
+                    'remaining'    => $newQuantity,
+                    'sold_price'   => $item['price'],
+                    'cost'         => $totalAmount,
+                    'created_at'   => now(),
+                    'updated_at'   => now(),
+                    'branch_code'  => $user->branch_code ?? '',
+                    'store_code'   => $pendingOrder->store_code,
+                    'is_uuid'      => null,
+                    'is_sync'      => '0',
                 ]);
-                
+
                 if (!$movement) {
                     throw new \Exception("Failed to create inventory movement for menu ID: {$menu->id}");
                 }
 
-            // LINE 439: START: Save itemized data to purchase_ordered table by ken 09-5-2026
-            try {
+                // ---------------------------------------------------------
+                // 5) Purchase ordered snapshot (+ price_type + sell_price)
+                //    No inner try/catch: a failed insert must roll back the
+                //    whole approval (and on PostgreSQL it aborts the
+                //    transaction anyway).
+                // ---------------------------------------------------------
                 DB::table('purchase_ordered')->insert([
                     'pending_purchase_order_id' => $pendingOrder->id,
-                    'menu_id' => $menu->id,
-                    'quantity' => $item['quantity'],
-                    'price' => $item['price'],
-                    'unit' => $item['unit'] ?? $menu->unit,
-                    'menu_name' => $menu->name,
-                    'brand_name' => $menu->brand ? $menu->brand->name : null,
-                    'brand_id' => $menu->brand_id,
-                    'supplier_id' => $pendingOrder->supplier_id,
-                    'supplier_name' => $supplierName,
-                    'reference_number' => $refNumber,
-                    'sales_invoice' => $salesInvoice,
-                    'store_code' => $pendingOrder->store_code,
-                    'remaining_stocks' => $item['quantity'], // LINE 455: Save the remaining stocks after approval
-                    'created_at' => now(),
-                    'updated_at' => now()
+                    'menu_id'                   => $menu->id,
+                    'quantity'                  => $item['quantity'],
+                    'price'                     => $item['price'],
+                    'unit'                      => $item['unit'] ?? $menu->unit,
+                    'menu_name'                 => $menu->name,
+                    'brand_name'                => $menu->brand ? $menu->brand->name : null,
+                    'brand_id'                  => $menu->brand_id,
+                    'supplier_id'               => $pendingOrder->supplier_id,
+                    'supplier_name'             => $supplierName,
+                    'reference_number'          => $refNumber,
+                    'sales_invoice'             => $salesInvoice,
+                    'store_code'                => $pendingOrder->store_code,
+                    'remaining_stocks'          => $item['quantity'],
+                    'price_type'                => $item['price_type'] ?? null,
+                    'sell_price'                => $item['sell_price'] ?? null,
+                    'created_at'                => now(),
+                    'updated_at'                => now(),
                 ]);
+
                 Log::info("Purchase ordered item saved for menu_id: {$menu->id}");
-            } catch (\Exception $e) {
-                Log::error('Error saving to purchase_ordered table:', [
-                    'message' => $e->getMessage(),
-                    'menu_id' => $menu->id
-                ]);
-                // Don't throw exception here to avoid breaking the main transaction
-                // Just log the error
-            }
-            // LINE 468: END: Save itemized data to purchase_ordered table by ken 09-5-2026               
                 Log::info("Stock added successfully for menu_id: {$menu->id}, quantity: {$item['quantity']}");
             }
-            
+
             $pendingOrder->update([
-                'status' => 'approved',
+                'status'      => 'approved',
                 'approved_by' => $user->id,
                 'approved_at' => now(),
-                'remarks' => 'Approved and processed by ' . $user->name
+                'remarks'     => 'Approved and processed by ' . $user->name,
             ]);
-            
+
             DB::commit();
-            
+
             Log::info("Purchase order {$pendingOrder->id} approved successfully");
-            
+
             return redirect()->route('pending.purchase.orders.index')
                 ->with('message', 'Purchase order approved and stocks added successfully.');
-                
+
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error approving purchase order:', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'order_id' => $id
+                'message'  => $e->getMessage(),
+                'trace'    => $e->getTraceAsString(),
+                'order_id' => $id,
             ]);
-            
+
             return back()->with('error', 'Error approving purchase order: ' . $e->getMessage());
         }
     }

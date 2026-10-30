@@ -16,10 +16,10 @@ class OrderedController extends Controller
         $table_cat = DB::table('table_categories')
         ->orderBy('id', 'asc')
         ->orderBy('name', 'asc')
-        ->where('store_code', auth()->user()->store_code)
+        //->where('store_code', auth()->user()->store_code)
         ->where('is_deleted', 0)
         ->get();
-        $branches = DB::table('settings')->where('store_code', auth()->user()->store_code)
+        $branches = DB::table('settings')//->where('store_code', auth()->user()->store_code)
         ->where('id', '!=',1)->get();
 
         /* Start of Audited total */
@@ -41,24 +41,108 @@ class OrderedController extends Controller
         $discountRow = DB::table('discounts')->where('user_id', auth()->id())->first();
         $limeDiscountRow = DB::table('lime_discount')->where('user_id', auth()->id())->first();
 
-        return view('user.cashier.orders', compact('tables','audited','nonAudited','SCRow','discountRow','limeDiscountRow','branches','table_cat'));
+        $arTransactions = DB::table('transactions')
+            ->leftJoin('tables', 'transactions.table', '=', 'tables.id')
+            ->select('transactions.*', 'tables.name as client_table_name', 'tables.credit_limit')
+            //->where('tables.store_code', auth()->user()->store_code)
+            ->where(function ($query) {
+                $query->where('transactions.store_code', auth()->user()->store_code)
+                    ->orWhereNull('transactions.store_code');
+            })
+            ->where('transactions.status', 'UNPAID')
+            ->where('transactions.order_status', '!=', 'CANCELLED')
+            ->where(function ($query) {
+                $query->where('transactions.mode_of_payment', 'AR')
+                    ->orWhere(function ($query) {
+                        $query->whereNotNull('transactions.payor_name')
+                            ->where('transactions.payor_name', '!=', '');
+                    });
+            })
+            ->orderBy('transactions.created_at', 'asc')
+            ->get();
+
+        $transactionIds = $arTransactions->pluck('id');
+        $transactionUuids = $arTransactions->pluck('is_uuid')->filter();
+        $arPayments = DB::table('payment_logs')
+            ->whereIn('tran_id', $transactionIds)
+            ->where('is_deleted', 0)
+            ->where(function ($query) {
+                $query->whereNull('is_void')->orWhere('is_void', 0);
+            })
+            ->orderBy('payment_date')
+            ->orderBy('id')
+            ->get()
+            ->groupBy('tran_id');
+        $arItems = DB::table('ordered')
+            ->leftJoin('menus', 'ordered.menu_id', '=', 'menus.id')
+            ->select('ordered.*', 'menus.name as menu_name')
+            ->where(function ($query) use ($transactionIds, $transactionUuids) {
+                $query->whereIn('ordered.tran_id', $transactionIds)
+                    ->orWhereIn('ordered.tran_uuid', $transactionUuids);
+            })
+            ->orderBy('ordered.id')
+            ->get();
+
+        foreach ($arTransactions as $transaction) {
+            $transaction->payments = $arPayments->get($transaction->id, collect());
+            $transaction->items = $arItems->filter(function ($item) use ($transaction) {
+                return $item->tran_id == $transaction->id || $item->tran_uuid == $transaction->is_uuid;
+            });
+            $transaction->paid_amount = round((float) $transaction->payments->sum('amount'), 2);
+            $transaction->balance_due = round(max(0, (float) $transaction->total - $transaction->paid_amount), 2);
+        }
+
+        $arTransactions = $arTransactions
+            ->filter(function ($transaction) {
+                return $transaction->balance_due > 0;
+            })
+            ->values();
+
+        $arClients = $arTransactions->groupBy('table')->map(function ($transactions, $tableId) {
+            $firstTransaction = $transactions->first();
+            $namedTransaction = $transactions->first(function ($transaction) {
+                return !empty($transaction->payor_name);
+            });
+
+            return (object) [
+                'table_id' => $tableId,
+                'name' => $firstTransaction->client_table_name ?? $namedTransaction->payor_name ?? 'Unnamed client',
+                'credit_limit' => (float) ($firstTransaction->credit_limit ?? 0),
+                'transactions' => $transactions,
+                'transaction_count' => $transactions->count(),
+                'paid_total' => round((float) $transactions->sum('paid_amount'), 2),
+                'unpaid_total' => round((float) $transactions->sum('balance_due'), 2),
+            ];
+        })->sortBy('name')->values();
+
+        $arPaidTotal = (float) DB::table('payment_logs')
+            ->join('transactions', 'payment_logs.tran_id', '=', 'transactions.id')
+            ->join('tables', 'transactions.table', '=', 'tables.id')
+            //->where('tables.store_code', auth()->user()->store_code)
+            ->where(function ($query) {
+                $query->where('transactions.store_code', auth()->user()->store_code)
+                    ->orWhereNull('transactions.store_code');
+            })
+            ->where('transactions.mode_of_payment', 'AR')
+            ->where('payment_logs.is_deleted', 0)
+            ->where(function ($query) {
+                $query->whereNull('payment_logs.is_void')->orWhere('payment_logs.is_void', 0);
+            })
+            ->sum('payment_logs.amount');
+        $arUnpaidTotal = round((float) $arTransactions->sum('balance_due'), 2);
+
+        return view('user.cashier.orders', compact('tables','audited','nonAudited','SCRow','discountRow','limeDiscountRow','branches','table_cat','arClients','arPaidTotal','arUnpaidTotal'));
     }
 
     public function indexAdmin(){
-        $tables = DB::table('tables')
-        ->where('store_code', auth()->user()->store_code)
-        ->orderBy('id', 'asc')
-        ->where('is_deleted', 0)
-        ->where('id', '!=', '0')
-        ->get();
-
-
+        $tables = DB::table('tables')->orderBy('id', 'asc')->orderBy('name', 'asc')->where('is_deleted', 0)->get();
         $table_cat = DB::table('table_categories')
-        ->where('store_code', auth()->user()->store_code)
         ->orderBy('id', 'asc')
         ->orderBy('name', 'asc')
         ->where('is_deleted', 0)
         ->get();
+        $branches = DB::table('settings')
+        ->where('id', '!=',1)->get();
 
         /* Start of Audited total */
         $today = date('Y-m-d');
@@ -79,7 +163,97 @@ class OrderedController extends Controller
         $discountRow = DB::table('discounts')->where('user_id', auth()->id())->first();
         $limeDiscountRow = DB::table('lime_discount')->where('user_id', auth()->id())->first();
 
-        return view('user.cashier.orders-admin', compact('tables','audited','nonAudited','SCRow','discountRow','limeDiscountRow','table_cat'));
+        $arTransactions = DB::table('transactions')
+            ->leftJoin('tables', 'transactions.table', '=', 'tables.id')
+            ->select('transactions.*', 'tables.name as client_table_name', 'tables.credit_limit')
+            //->where('tables.store_code', auth()->user()->store_code)
+            ->where(function ($query) {
+                $query->where('transactions.store_code', auth()->user()->store_code)
+                    ->orWhereNull('transactions.store_code');
+            })
+            ->where('transactions.status', 'UNPAID')
+            ->where('transactions.order_status', '!=', 'CANCELLED')
+            ->where(function ($query) {
+                $query->where('transactions.mode_of_payment', 'AR')
+                    ->orWhere(function ($query) {
+                        $query->whereNotNull('transactions.payor_name')
+                            ->where('transactions.payor_name', '!=', '');
+                    });
+            })
+            ->orderBy('transactions.created_at', 'asc')
+            ->get();
+
+        $transactionIds = $arTransactions->pluck('id');
+        $transactionUuids = $arTransactions->pluck('is_uuid')->filter();
+        $arPayments = DB::table('payment_logs')
+            ->whereIn('tran_id', $transactionIds)
+            ->where('is_deleted', 0)
+            ->where(function ($query) {
+                $query->whereNull('is_void')->orWhere('is_void', 0);
+            })
+            ->orderBy('payment_date')
+            ->orderBy('id')
+            ->get()
+            ->groupBy('tran_id');
+        $arItems = DB::table('ordered')
+            ->leftJoin('menus', 'ordered.menu_id', '=', 'menus.id')
+            ->select('ordered.*', 'menus.name as menu_name')
+            ->where(function ($query) use ($transactionIds, $transactionUuids) {
+                $query->whereIn('ordered.tran_id', $transactionIds)
+                    ->orWhereIn('ordered.tran_uuid', $transactionUuids);
+            })
+            ->orderBy('ordered.id')
+            ->get();
+
+        foreach ($arTransactions as $transaction) {
+            $transaction->payments = $arPayments->get($transaction->id, collect());
+            $transaction->items = $arItems->filter(function ($item) use ($transaction) {
+                return $item->tran_id == $transaction->id || $item->tran_uuid == $transaction->is_uuid;
+            });
+            $transaction->paid_amount = round((float) $transaction->payments->sum('amount'), 2);
+            $transaction->balance_due = round(max(0, (float) $transaction->total - $transaction->paid_amount), 2);
+        }
+
+        $arTransactions = $arTransactions
+            ->filter(function ($transaction) {
+                return $transaction->balance_due > 0;
+            })
+            ->values();
+
+        $arClients = $arTransactions->groupBy('table')->map(function ($transactions, $tableId) {
+            $firstTransaction = $transactions->first();
+            $namedTransaction = $transactions->first(function ($transaction) {
+                return !empty($transaction->payor_name);
+            });
+
+            return (object) [
+                'table_id' => $tableId,
+                'name' => $firstTransaction->client_table_name ?? $namedTransaction->payor_name ?? 'Unnamed client',
+                'credit_limit' => (float) ($firstTransaction->credit_limit ?? 0),
+                'transactions' => $transactions,
+                'transaction_count' => $transactions->count(),
+                'paid_total' => round((float) $transactions->sum('paid_amount'), 2),
+                'unpaid_total' => round((float) $transactions->sum('balance_due'), 2),
+            ];
+        })->sortBy('name')->values();
+
+        $arPaidTotal = (float) DB::table('payment_logs')
+            ->join('transactions', 'payment_logs.tran_id', '=', 'transactions.id')
+            ->join('tables', 'transactions.table', '=', 'tables.id')
+            //->where('tables.store_code', auth()->user()->store_code)
+            ->where(function ($query) {
+                $query->where('transactions.store_code', auth()->user()->store_code)
+                    ->orWhereNull('transactions.store_code');
+            })
+            ->where('transactions.mode_of_payment', 'AR')
+            ->where('payment_logs.is_deleted', 0)
+            ->where(function ($query) {
+                $query->whereNull('payment_logs.is_void')->orWhere('payment_logs.is_void', 0);
+            })
+            ->sum('payment_logs.amount');
+        $arUnpaidTotal = round((float) $arTransactions->sum('balance_due'), 2);
+
+        return view('user.cashier.orders-admin', compact('tables','audited','nonAudited','SCRow','discountRow','limeDiscountRow','branches','table_cat','arClients','arPaidTotal','arUnpaidTotal'));
     }
 
     public function getMenu(Request $request){
@@ -672,8 +846,8 @@ class OrderedController extends Controller
         $id = $request->id;
         $trans = DB::table('transactions')
             ->where('table', $id)
-            ->where('status', 'UNPAID')
-            ->where('order_status', '!=', 'CANCELLED')
+            ->where('transactions.status', 'UNPAID')
+            ->where('transactions.order_status', '!=', 'CANCELLED')
             ->where('order_status', '!=', 'COMPLETED')
             ->first();
 
@@ -688,6 +862,10 @@ class OrderedController extends Controller
     }
 
     public function paid(Request $request){
+        if ($request->filled('ar_transaction_id')) {
+            return $this->payArTransaction($request);
+        }
+
         $id = $request->id;
         $mop = $request->mop;
         $amountInput = $request->amountInput;
@@ -1284,6 +1462,12 @@ class OrderedController extends Controller
 
         $slug = $request->slug;
         $checkbox = $request->checkbox;
+        $ordered = DB::table('ordered')
+            ->where('slug', $slug)
+            ->where('store_code', auth()->user()->store_code)
+            ->exists();
+
+        abort_unless($ordered, 404);
 
         if ($checkbox == 'true'){
             DB::table('ordered')->where('slug', $slug)->update([
@@ -1304,13 +1488,53 @@ class OrderedController extends Controller
         $slug = $request->slug;
         $voidCode = $request->voidCode;
         //$id = $request->id;
-        $tran = DB::table('transactions')->where('slug', $slug)->first();
+        $tran = DB::table('transactions')
+            ->join('tables', 'transactions.table', '=', 'tables.id')
+            ->select('transactions.*')
+            ->where('transactions.slug', $slug)
+            ->where(function ($query) {
+                $query->where('transactions.store_code', auth()->user()->store_code)
+                    ->orWhereNull('transactions.store_code');
+            })
+            ->first();
+
+        if (!$tran) {
+            return response()->json(['msg' => 'error', 'error' => 'Transaction not found.'], 404);
+        }
 
         $settings = DB::table('settings')->where('id', 1)->first();
+        $isArTransaction = $tran->mode_of_payment === 'AR'
+            || ($tran->status === 'UNPAID' && !empty($tran->payor_name));
+        $previousPayments = $isArTransaction
+            ? (float) DB::table('payment_logs')
+                ->where('tran_id', $tran->id)
+                ->where('is_deleted', 0)
+                ->where(function ($query) {
+                    $query->whereNull('is_void')->orWhere('is_void', 0);
+                })
+                ->sum('amount')
+            : 0;
+        $previousBalance = $isArTransaction
+            ? max(0, round((float) $tran->total - $previousPayments, 2))
+            : 0;
+        $orderedForTransaction = function () use ($tran) {
+            return DB::table('ordered')->where(function ($query) use ($tran) {
+                $query->where('tran_id', $tran->id);
+
+                if (!empty($tran->is_uuid)) {
+                    $query->orWhere('tran_uuid', $tran->is_uuid);
+                }
+            });
+        };
 
         if ($settings->void_code == $voidCode){
+            if ($request->boolean('void_transaction')) {
+                $orderedForTransaction()->update([
+                    'for_delete' => 1,
+                ]);
+            }
             
-         $orderedItems = DB::table('ordered')->where('tran_id', $tran->id)->where('for_delete', 1)->get();
+         $orderedItems = $orderedForTransaction()->where('for_delete', 1)->get();
 
 
             
@@ -1336,7 +1560,7 @@ class OrderedController extends Controller
                     'slug' => $ordered->slug,
                     'menu_id' => $ordered->menu_id,
                     'quantity' => $ordered->quantity,
-                    'tran_id' => $ordered->tran_id,
+                    'tran_id' => $tran->id,
                     'amount' => $ordered->amount, 
                     'food_cost' => $ordered->food_cost,
                     'cashier' => $ordered->cashier,
@@ -1360,7 +1584,7 @@ class OrderedController extends Controller
                     'updated_at' => now(),
                 ]);
             }   
-        DB::table('ordered')->where('tran_id', $tran->id)->where('for_delete', 1)->delete();
+        $orderedForTransaction()->where('for_delete', 1)->delete();
 
 
         $subTotal = $subTotalWDisc = $subTotalODisc = 0;
@@ -1384,16 +1608,14 @@ class OrderedController extends Controller
 
         //$trans = DB::table('transactions')->where('id', $corder->tran_id)->first();
         
-        $orders = DB::table('ordered')
+        $orders = $orderedForTransaction()
         ->join('menus', 'ordered.menu_id', '=', 'menus.id')
         ->select('ordered.tran_id', 'ordered.menu_id', 'menus.name', 'ordered.quantity', 'ordered.amount', 'ordered.slug', 'ordered.status', 'ordered.type', 'ordered.is_pwd', 'ordered.is_odisc')
-        ->where('ordered.tran_id', $tran->id)
         ->get();
 
-        $ordersCount = DB::table('ordered')
+        $ordersCount = $orderedForTransaction()
         ->join('menus', 'ordered.menu_id', '=', 'menus.id')
         ->select('ordered.tran_id', 'ordered.menu_id', 'menus.name', 'ordered.quantity', 'ordered.amount', 'ordered.slug', 'ordered.status', 'ordered.type', 'ordered.is_pwd')
-        ->where('ordered.tran_id', $tran->id)
         ->count();
         if ($ordersCount > 0){
 
@@ -1479,6 +1701,28 @@ class OrderedController extends Controller
             $msg = 'success';
         } else {
             $msg = 'error';
+        }
+
+        if ($msg === 'success' && $isArTransaction) {
+            $updatedTransaction = DB::table('transactions')->where('id', $tran->id)->first();
+            $updatedPayments = (float) DB::table('payment_logs')
+                ->where('tran_id', $tran->id)
+                ->where('is_deleted', 0)
+                ->where(function ($query) {
+                    $query->whereNull('is_void')->orWhere('is_void', 0);
+                })
+                ->sum('amount');
+            $updatedBalance = max(0, round((float) $updatedTransaction->total - $updatedPayments, 2));
+            $creditToRestore = round(max(0, $previousBalance - $updatedBalance), 2);
+
+            if ($creditToRestore > 0) {
+                DB::table('tables')
+                    ->where('id', $tran->table)
+                    ->where('store_code', auth()->user()->store_code)
+                    ->update([
+                        'credit_limit' => DB::raw('COALESCE(credit_limit, 0) + ' . number_format($creditToRestore, 2, '.', '')),
+                    ]);
+            }
         }
 
         $response = array(
@@ -1771,10 +2015,26 @@ class OrderedController extends Controller
                 $is_odisc = ($order->is_odisc == 0) ? '' : 'checked' ;
                 
                 // if ($order->role == 2 || $order->role == 1){
-                    $staff = DB::table('users')
-                    ->Where('id', $order->cashier)
-                    ->first();
-                    $serverName = $staff->name;
+                $serverName = 'N/A';
+
+                if (!empty($order->cashier)) {
+                    $staff = DB::table('users')->where('id', $order->cashier)->first();
+
+                    if ($staff) {
+                        $serverName = $staff->name;
+                    } else {
+                        // fallback: maybe it's a staff record, not a user
+                        $staffRec = DB::table('staff')->where('id', $order->cashier)->first();
+                        if ($staffRec) {
+                            $serverName = trim($staffRec->fname . ' ' . $staffRec->lname);
+                        }
+                    }
+                }
+
+                // Optional: honor the original Guest logic
+                if ($order->role == 7) {
+                    $serverName = 'Guest';
+                }
                 // } elseif($order->role == 7) {
                     
                 //     $serverName = 'Guest';
@@ -2250,6 +2510,152 @@ class OrderedController extends Controller
             'created_at' => date('Y-m-d h:i:s'),
             'updated_at' => date('Y-m-d h:i:s')
         ]);
+    }
+
+    private function payArTransaction(Request $request)
+    {
+        $paymentMethods = [
+            'cashMop' => 'CASH',
+            'ccMop' => 'CREDIT CARD - MASTERCARD',
+            'visaMop' => 'VISA',
+            'gcashMop' => 'GCASH',
+            'wcpMop' => 'WE CHAT PAY',
+            'amexMop' => 'AMEX',
+            'bdoMop' => 'BDO PAY',
+            'bancnetMop' => 'BANCNET',
+            'dinersMop' => 'DINERS',
+            'dpMop' => 'DOWN PAYMENT',
+            'giftMop' => 'GIFT CERT',
+            'jcbMop' => 'JCB',
+            'mayaMop' => 'PAYMAYA',
+            'grabPayMop' => 'GRAB PAY',
+            'unionMop' => 'UNION PAY',
+            'grabMop' => 'GRAB FOOD',
+            'pandaMop' => 'FOOD PANDA',
+            'qrphMop' => 'QR PH',
+        ];
+        $payments = [];
+        $totalPayment = 0;
+
+        foreach ($paymentMethods as $field => $method) {
+            $inputAmount = $request->input($field, 0);
+
+            if (!is_numeric($inputAmount)) {
+                return response()->json(['error' => 'Payment amounts must be numeric.'], 422);
+            }
+
+            $amount = round((float) $inputAmount, 2);
+
+            if ($amount < 0) {
+                return response()->json(['error' => 'Payment amounts cannot be negative.'], 422);
+            }
+
+            if ($amount > 0) {
+                $payments[$method] = $amount;
+                $totalPayment += $amount;
+            }
+        }
+
+        $totalPayment = round($totalPayment, 2);
+
+        if ($totalPayment <= 0) {
+            return response()->json(['error' => 'Enter a payment amount.'], 422);
+        }
+
+        return DB::transaction(function () use ($request, $payments, $totalPayment) {
+            $transaction = DB::table('transactions')
+                ->join('tables', 'transactions.table', '=', 'tables.id')
+                ->select('transactions.*')
+                ->where('transactions.id', $request->input('ar_transaction_id'))
+                ->where(function ($query) {
+                    $query->where('transactions.store_code', auth()->user()->store_code)
+                        ->orWhereNull('transactions.store_code');
+                })
+                ->where('transactions.status', 'UNPAID')
+                ->where('transactions.order_status', '!=', 'CANCELLED')
+                ->lockForUpdate()
+                ->first();
+
+            if (!$transaction || empty($transaction->payor_name)) {
+                return response()->json(['error' => 'The unpaid client transaction was not found.'], 404);
+            }
+
+            $previousPayments = (float) DB::table('payment_logs')
+                ->where('tran_id', $transaction->id)
+                ->where('is_deleted', 0)
+                ->where(function ($query) {
+                    $query->whereNull('is_void')->orWhere('is_void', 0);
+                })
+                ->sum('amount');
+            $balanceDue = round(max(0, (float) $transaction->total - $previousPayments), 2);
+
+            if ($totalPayment > $balanceDue) {
+                return response()->json(['error' => 'Payment cannot exceed the remaining balance.'], 422);
+            }
+
+            $paymentDate = now();
+            $paymentType = $paymentDate->toDateString() > date('Y-m-d', strtotime($transaction->created_at)) ? 1 : 0;
+            $remainingBalance = round(max(0, $balanceDue - $totalPayment), 2);
+
+            foreach ($payments as $method => $amount) {
+                DB::table('payment_orders')->insert([
+                    'tran_id' => $transaction->id,
+                    'mop' => $method,
+                    'amount' => $amount,
+                    'cashier' => auth()->id(),
+                    'created_at' => $paymentDate,
+                    'updated_at' => $paymentDate,
+                ]);
+
+                $paymentMethod = DB::table('mode_of_payment')
+                    ->where('store_code', auth()->user()->store_code)
+                    ->where('name', $method)
+                    ->first();
+
+                DB::table('payment_logs')->insert([
+                    'tran_id' => $transaction->id,
+                    'tran_number' => $transaction->number,
+                    'tran_uuid' => $transaction->is_uuid,
+                    'mop_id' => $paymentMethod->id ?? null,
+                    'label' => $method,
+                    'total' => $transaction->total,
+                    'amount' => $amount,
+                    'balance' => $remainingBalance,
+                    'cashier_id' => auth()->id(),
+                    'type' => $paymentType,
+                    'is_deleted' => 0,
+                    'is_void' => 0,
+                    'client_name' => $transaction->payor_name,
+                    'payment_date' => $paymentDate->toDateString(),
+                    'store_code' => auth()->user()->store_code,
+                    'created_at' => $paymentDate,
+                    'updated_at' => $paymentDate,
+                ]);
+            }
+
+            $newBalance = round(max(0, $balanceDue - $totalPayment), 2);
+            DB::table('transactions')
+                ->where('id', $transaction->id)
+                ->update([
+                    'amount' => DB::raw('COALESCE(amount, 0) + ' . number_format($totalPayment, 2, '.', '')),
+                    'status' => $newBalance <= 0 ? 'PAID' : 'UNPAID',
+                    'mode_of_payment' => 'AR',
+                    'cashier' => auth()->id(),
+                    'updated_at' => $paymentDate,
+                ]);
+            DB::table('tables')
+                ->where('id', $transaction->table)
+                ->where('store_code', auth()->user()->store_code)
+                ->update([
+                    'credit_limit' => DB::raw('COALESCE(credit_limit, 0) + ' . number_format($totalPayment, 2, '.', '')),
+                ]);
+
+            return response()->json([
+                'msg' => 'success',
+                'balance' => $newBalance,
+                'paid' => $totalPayment,
+            ]);
+        });
     }
 
     public function dp(Request $request){

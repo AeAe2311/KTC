@@ -33,9 +33,11 @@ private function buildExpensesQuery(Request $request, $dateFrom = null, $dateTo 
 {
     $query = DB::table('inventory_etransaction')
         ->leftJoin('users', 'users.id', '=', 'inventory_etransaction.e_server')
+        ->leftJoin('inventory_transactions', 'inventory_transactions.e_id', '=', 'inventory_etransaction.id')
         ->select(
             'inventory_etransaction.*',
             'inventory_etransaction.id as e_id',
+            'inventory_transactions.other_remarks',
             'users.firstname',
             'users.lastname',
 

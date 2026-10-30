@@ -24,6 +24,7 @@
         <div id="notifDiv" class="absolute top-16 left-1/2 -translate-x-1/2 z-50 w-[400px]"></div>
     {{-- NOTIF END --}}
 
+
     {{-- EDIT PAX MODAL --}}
     <!-- Modal toggle -->
     <button data-modal-target="editPaxModal" data-modal-toggle="editPaxModal" id="openeditPaxModal" class="hidden" type="button"></button>
@@ -63,6 +64,7 @@
         </div>
     {{-- EDIT PAX MODAL END --}}
     
+    
     {{-- AR MODAL --}}
         <!-- Modal toggle -->
         <button data-modal-target="ArModal" data-modal-toggle="ArModal" id="openArModal" class="hidden" type="button"></button>
@@ -95,16 +97,16 @@
                                     </button>  -->
                             </div>
                         </div>
-                        <div class="w-full text-center">
+                        {{--<div class="w-full text-center">
                             <label for="" class="text-base leading-relaxed text-gray-500 w-full text-center" >Enter Code</label>
                             <div class="relative mb-2">
                                 <input type="password" name="arCode" id="arCode" class=" block w-full px-4 py-2.5  text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 text-center" required autocomplete="off">
                                     <button id="showPasswordAr" type="button" class=" absolute right-2 bottom-1">
                                         <i class="uil uil-eye text-3xl"></i>
-                                    </button> 
+                                    </button>
                             </div>
                         </div>
-                        <p class="text-red-600 text-center" id="errorArCode"></p>
+                        <p class="text-red-600 text-center" id="errorArCode"></p>--}}
 
                     </div>
                     <!-- Modal footer -->
@@ -116,52 +118,6 @@
             </div>
         </div>
     {{-- AR MODAL END --}}
-
-     {{-- Multiple Void Table MODAL --}}
-        <!-- Modal toggle -->
-        <button data-modal-target="multipleVoidModal" data-modal-toggle="multipleVoidModal" id="openMultipleVoidModal" class="hidden" type="button"></button>
-    
-        <!-- Main modal -->
-        <div id="multipleVoidModal" data-modal-backdrop="static" tabindex="-1" aria-hidden="true" class="fixed top-0 left-0 right-0 z-[99] hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full bg-gray-800 bg-opacity-70">
-            <div class="relative w-full max-w-2xl max-h-full">
-                <!-- Modal content -->
-                <div class="relative bg-white rounded-lg shadow">
-                    <!-- Modal header -->
-                    <div class="flex items-start justify-between p-4 border-b rounded-t">
-                        <h3 class="text-2xl font-semibold text-gray-900">
-                            <i class="uil uil-exclamation-triangle text-red-500 text-3xl mr-3"></i>Multiple Void
-                        </h3>
-                        <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center" data-modal-hide="removeModal">
-                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>  
-                        </button>
-                    </div>
-                    <!-- Modal body -->
-                    <div class="p-6 space-y-4" >
-                        
-                        <p class="text-center leading-relaxed text-gray-500">
-                            Are you sure you want to delete the selected items?
-                        </p>
-                        <div class="w-full text-center">
-                            <label for="" class="text-base leading-relaxed text-gray-500 w-full text-center" >Enter Code</label>
-                            <div class="relative mb-2">
-                                <input type="password" name="voidCodeMultiple" id="voidCodeMultiple" class=" block w-full px-4 py-2.5  text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 text-center" required autocomplete="off">
-                                    <button id="showPasswordMultiple" type="button" class=" absolute right-2 bottom-1">
-                                        <i class="uil uil-eye text-3xl"></i>
-                                    </button> 
-                            </div>
-                        </div>
-                        <p class="text-red-600 text-center" id="errorVoidCodeMultiple"></p>
-                    </div>
-                    
-                    <!-- Modal footer -->
-                    <div class="flex items-center p-6 space-x-6 border-t border-gray-200 rounded-b">
-                        <button id="acceptMultipleVoidButton" data-modal-hide="" data-slug="" type="button" class="text-white bg-red-700 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm py-5 text-center w-1/2">Confirm</button>
-                        <button data-modal-hide="multipleVoidModal" type="button" class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg border border-gray-200 text-sm font-medium px-5 py-5 hover:text-gray-900 focus:z-10 w-1/2">Cancel</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    {{-- Multiple Void Table MODAL END --}}
 
     {{-- REMOVE MODAL --}}
         <!-- Modal toggle -->
@@ -208,7 +164,6 @@
         </div>
     {{-- REMOVE MODAL END --}}
 
-
     {{-- Change Table MODAL --}}
         <!-- Modal toggle -->
         <button data-modal-target="TransferTableModal" data-modal-toggle="TransferTableModal" id="openTransferTableModal" class="hidden" type="button"></button>
@@ -230,6 +185,7 @@
                     <!-- Modal body -->
                     <div class="p-6 space-y-4" id="transferTableDiv">
                         
+                        
                     </div>
                     <input type="hidden" class="tableIDforDiscount" name="tableIDforDiscount">
                     <!-- Modal footer -->
@@ -241,7 +197,6 @@
             </div>
         </div>
     {{-- Change Table MODAL END --}}
-
 
     {{-- Split Table MODAL --}}
         <!-- Modal toggle -->
@@ -264,6 +219,7 @@
                     <!-- Modal body -->
                     <div class="p-6" id="splitTableDiv">
                         
+                        
                     </div>
                     <div class="text-center mb-2 hidden" id="splitErrorDiv">
                         <span class="text-red-700 p-6">Please Select Item to Split!</span>
@@ -271,13 +227,131 @@
                     <input type="hidden" class="tableIDforDiscount" name="tableIDforDiscount">
                     <!-- Modal footer -->
                     <div class="flex items-center p-6 space-x-6 border-t border-gray-200 rounded-b">
-                        <button id="acceptSplitTableButton" data-slug="" type="button" class="text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm py-5 text-center w-1/2">Confirm</button>
+                        <button id="acceptSplitTableButton" data-modal-hide="" data-slug="" type="button" class="text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm py-5 text-center w-1/2">Confirm</button>
                         <button data-modal-hide="SplitTableModal" type="button" class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg border border-gray-200 text-sm font-medium px-5 py-5 hover:text-gray-900 focus:z-10 w-1/2">Cancel</button>
                     </div>
                 </div>
             </div>
         </div>
     {{-- Split Table MODAL END --}}
+
+    {{-- DP Table MODAL --}}
+        <!-- Modal toggle -->
+        <button data-modal-target="dpModal" data-modal-toggle="dpModal" id="openDpModal" class="hidden" type="button"></button>
+    
+        <!-- Main modal -->
+        <div id="dpModal" data-modal-backdrop="static" tabindex="-1" aria-hidden="true" class="fixed top-0 left-0 right-0 z-[99] hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full bg-gray-800 bg-opacity-70">
+            <div class="relative w-full max-w-2xl max-h-full">
+                <!-- Modal content -->
+                <div class="relative bg-white rounded-lg shadow">
+                    <!-- Modal header -->
+                    <div class="flex items-start justify-between p-4 border-b rounded-t">
+                        <h3 class="text-2xl font-semibold text-gray-900">
+                            <i class="uil uil-exclamation-circle text-gray-500 text-3xl mr-3"></i>Downpayment
+                        </h3>
+                        <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center" data-modal-hide="dpModal">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>  
+                        </button>
+                    </div>
+                    <!-- Modal body -->
+                    <div class="p-6" id="">
+                        <div class="flex justify mb-2 items-center">
+                            <label for="" class="mr-2 w-1/4">Amount: </label>
+                            <input type="text" name="dpAmount" id="dpAmount" class="inputNumber bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-3/4 p-2.5" required autocomplete="off">
+                            
+                        </div>
+                        <div class="flex justify mb-2 items-center">
+                        <label for="" class="mr-2 w-1/4">Payment method :</label>
+                        <select name="mop_val" id="mop_val" class="inputNumber bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-3/4 p-2.5" required autocomplete="off">
+                            <option value="CASH">CASH</option>
+                            <option value="AMEX">AMEX</option>
+                            <option value="GRAB PAY">GRAB PAY</option>
+                            <option value="BANCNET">BANCNET</option>
+                            <option value="DINERS">DINERS</option>
+                            <option value="DOWN PAYMENT">DOWN PAYMENT</option>
+                            <option value="BDO PAY">BDO PAY</option>
+                            <option value="GCASH ">GCASH </option>
+                            <option value="GIFT CERT">GIFT CERT</option>
+                            <option value="JCB">JCB</option>
+                            <option value="MASTERCARD">MASTERCARD</option>
+                            <option value="PAYMAYA">PAYMAYA</option>
+                            <option value="WE CHAT PAY">WE CHAT PAY</option>
+                            <option value="UNION PAY">UNION PAY</option>
+                            <option value="VISA">VISA</option>
+                            <option value="DINERS">DINERS</option>
+                            <option value="GRAB FOOD">GRAB FOOD</option>
+                            <option value="FOOD PANDA">FOOD PANDA</option>
+                        </select>
+                        </div>
+                        <div class="flex justify mb-2 items-center">
+                        <label for="" class="mr-2 w-1/4">Branch :</label>
+                        <select name="branch" id="branch" class="inputNumber bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-3/4 p-2.5" required autocomplete="off">
+                            @foreach ($branches as $branch)
+                                <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+                            @endforeach
+                        </select>
+                        </div>
+                        
+                    </div>
+                    <div class="text-center mb-2 hidden" id="dpErrorDiv">
+                        <span class="text-red-700 p-6">Please input amount!</span>
+                    </div>
+                    <input type="hidden" class="tableIDforDiscount" name="tableIDforDiscount">
+                    <!-- Modal footer -->
+                    <div class="flex items-center p-6 space-x-6 border-t border-gray-200 rounded-b">
+                        <button id="acceptDpButton" data-modal-hide="" data-slug="" type="button" class="text-white bg-green-700 hover:bg-green-800 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm py-5 text-center w-1/2">Confirm</button>
+                        <button data-modal-hide="dpModal" type="button" class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg border border-gray-200 text-sm font-medium px-5 py-5 hover:text-gray-900 focus:z-10 w-1/2">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {{-- DP Table MODAL END --}}
+
+    {{-- Multiple Void Table MODAL --}}
+        <!-- Modal toggle -->
+        <button data-modal-target="multipleVoidModal" data-modal-toggle="multipleVoidModal" id="openMultipleVoidModal" class="hidden" type="button"></button>
+    
+        <!-- Main modal -->
+        <div id="multipleVoidModal" data-modal-backdrop="static" tabindex="-1" aria-hidden="true" class="fixed top-0 left-0 right-0 z-[99] hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full bg-gray-800 bg-opacity-70">
+            <div class="relative w-full max-w-2xl max-h-full">
+                <!-- Modal content -->
+                <div class="relative bg-white rounded-lg shadow">
+                    <!-- Modal header -->
+                    <div class="flex items-start justify-between p-4 border-b rounded-t">
+                        <h3 class="text-2xl font-semibold text-gray-900">
+                            <i class="uil uil-exclamation-triangle text-red-500 text-3xl mr-3"></i>Multiple Void
+                        </h3>
+                        <button type="button" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm p-1.5 ml-auto inline-flex items-center" data-modal-hide="removeModal">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>  
+                        </button>
+                    </div>
+                    <!-- Modal body -->
+                    <div class="p-6 space-y-4" id="transferTableDiv">
+                        
+                        <p class="text-center leading-relaxed text-gray-500">
+                            Are you sure you want to delete the selected items?
+                        </p>
+                        <div class="w-full text-center">
+                            <label for="" class="text-base leading-relaxed text-gray-500 w-full text-center" >Enter Code</label>
+                            <div class="relative mb-2">
+                                <input type="password" name="voidCodeMultiple" id="voidCodeMultiple" class=" block w-full px-4 py-2.5  text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 text-center" required autocomplete="off">
+                                    <button id="showPasswordMultiple" type="button" class=" absolute right-2 bottom-1">
+                                        <i class="uil uil-eye text-3xl"></i>
+                                    </button> 
+                            </div>
+                        </div>
+                        <p class="text-red-600" id="errorVoidCodeMultiple"></p>
+                    </div>
+                    
+                    <!-- Modal footer -->
+                    <div class="flex items-center p-6 space-x-6 border-t border-gray-200 rounded-b">
+                        <button id="acceptMultipleVoidButton" data-modal-hide="" data-slug="" type="button" class="text-white bg-red-700 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm py-5 text-center w-1/2">Confirm</button>
+                        <button data-modal-hide="multipleVoidModal" type="button" class="text-gray-500 bg-white hover:bg-gray-100 focus:ring-4 focus:outline-none focus:ring-blue-300 rounded-lg border border-gray-200 text-sm font-medium px-5 py-5 hover:text-gray-900 focus:z-10 w-1/2">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {{-- Multiple Void Table MODAL END --}}
 
     {{-- REMOVE PWD MODAL --}}
         <!-- Modal toggle -->
@@ -413,7 +487,7 @@
                         <p class="text-center leading-relaxed text-gray-500">
                             Are you sure you want to reduce the quantity of this order?
                         </p>
-                        <div class="w-full text-center">
+                        {{--<div class="w-full text-center">
                             <label for="" class="text-base leading-relaxed text-gray-500 w-full text-center" >Enter Code</label>
                             <div class="relative mb-2">
                                 <input type="password" name="voidCodeReduce" id="voidCodeReduce" class=" block w-full px-4 py-2.5  text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 text-center" required autocomplete="off">
@@ -422,7 +496,7 @@
                                     </button> 
                             </div>
                         </div>
-                        <p class="text-red-600" id="errorVoidCodeReduce"></p>
+                        <p class="text-red-600" id="errorVoidCodeReduce"></p>--}}
                     </div>
                     <!-- Modal footer -->
                     <div class="flex items-center p-6 space-x-6 border-t border-gray-200 rounded-b">
@@ -565,10 +639,10 @@
                             <label for="customer_with_discount" class="block mb-2 text-sm font-medium text-gray-900" hidden>Number Customer With Discount</label>
                             <input type="number" id="customer_with_discount" name="customer_with_discount" value="0" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" autocomplete="off">
                         </div>
-                        <div class="mb-6">
-                            
-                            <input type="hidden" id="total_customer" name="total_customer" value="0" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" autocomplete="off">
-                        </div>
+                        <!--<div class="mb-6">-->
+                        <!--    <label for="total_customer" class="block mb-2 text-sm font-medium text-gray-900" hidden>Total Number of Customer</label>-->
+                        <!--    <input type="text" id="total_customer" name="total_customer" value="0" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" autocomplete="off">-->
+                        <!--</div>-->
                     </div>
                     <input type="hidden" class="tableIDforDiscount" id="" name="tableIDforDiscount">
                     <!-- Modal footer -->
@@ -921,7 +995,7 @@
                     </div>
                     <div class="flex-inline text-center p-2">
                         <!-- <input type="text" id="mopselected"> -->
-                        <p id="amountError" class="hidden text-lg text-red-500 italic">Invalid amount. Please enter an amount more than or equal to <span class=" font-medium ml-1"> ₱ </span><span id="actualAmount2" class=" font-bold text-2xl"></span></p>
+                        <p id="amountError" class="hidden text-lg text-red-500 italic">Invalid payment amount. Enter the full amount for a table payment, or a partial amount up to the AR balance.</p>
                     </div>
                     <!-- Modal footer -->
                     <div class="flex items-center p-2 space-x-6 border-t border-gray-300 rounded-b">
@@ -1028,10 +1102,10 @@
         <button data-modal-target="selectedTableModal" data-modal-toggle="selectedTableModal" id="openSelectedTableModal" class="hidden" type="button"></button>
     
         <!-- Main modal -->
-        <div id="selectedTableModal" tabindex="-1" aria-hidden="true" class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-hidden overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full">
-            <div class="relative w-full max-w-4xl max-h-full">
+        <div id="selectedTableModal" tabindex="-1" aria-hidden="true" class="fixed top-0 left-0 right-0 z-50 hidden w-full p-4 overflow-x-auto overflow-y-auto md:inset-0 h-[calc(100%-1rem)] max-h-full " data-modal-backdrop="static">
+            <div class="relative w-full max-w-4xl max-h-full ">
                 <!-- Modal content -->
-                <div class="relative bg-white rounded-lg shadow">
+                <div class="relative bg-white rounded-lg shadow min-w-[700px]">
                     <!-- Modal header -->
                     <div class="flex items-start justify-between p-4 border-b rounded-t">
                         <h3 id="tableName" class="text-2xl font-semibold text-gray-900"></h3>
@@ -1052,10 +1126,10 @@
                         </div>
                     </div>
                     <!-- Modal body -->
-                    <div class="px-4 py-2 space-y-4 h-[500px] overflow-y-auto">
+                    <div class="px-4 py-2 space-y-4 overflow-y-auto min-w-[700px] h-[500px]  overflow-x-auto">
                         <input type="hidden" name="table" id="table">
                         <p class="text-xl leading-relaxed text-gray-500 font-semibold">
-                            <div id="allOrders" class="relative h-auto">
+                            <div id="allOrders" class="relative h-auto ">
 
                             </div>
                             <div id="OrderDiscount" class="relative h-auto">
@@ -1555,91 +1629,152 @@
         </div>
     {{-- SELECTED TABLE ADDITIONAL ORDER END --}}
 
-         <!-- leo start 4/12/25 -->
+        <!-- leo start 4/12/25 -->
 
-     
-    {{-- LEFT CONTENT --}}
-    <div class="h-full w-full xl:w-auto xl:col-span-2 bg-white shadow-lg rounded-lg border border-gray-200 overflow-hidden">
-    <div>
-        <div class="p-6  lg:ml-64">
-            <div class="flex justify-between w-full">
-                <div class="p-px">
-                    <button class="w-9 aspect-square border border-neutral-300 rounded-lg scroll-left table">
-                        <i class="uil uil-arrow-left text-2xl"></i>
-                    </button>
-                </div>
-                <div id="tableTabsC" class="py-0.5 overflow-x-hidden w-full">
-                    <div id="tableTabs" data-tabs-toggle="#tableTabContent" role="tablist" class="overflow-x-auto flex gap-x-2">
-                        <button id="all-table-tab" data-tabs-target="#all-table" type="button" role="tab" aria-controls="all-table" aria-selected="true" class="leading-8 font-semibold border rounded-lg whitespace-nowrap w-full">
-                            ALL
-                        </button>
-                        @foreach ($table_cat as $table_category)
-                            <button id="{{ $table_category->slug }}-tab" data-tabs-target="#{{ $table_category->slug }}-table" type="button" role="tab" aria-controls="{{ $table_category->slug }}-table" aria-selected="false" class="leading-8 font-semibold border rounded-lg whitespace-nowrap w-full">
-                                {{ $table_category->name }}
-                            </button>
-                        @endforeach
-                    </div>
-                </div>
-                <div class="p-px">
-                    <button class="w-9 aspect-square border border-neutral-300 rounded-lg scroll-right table">
-                        <i class="uil uil-arrow-right text-2xl"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <div id="tableAllContents" class="p-6 lg:ml-64 overflow-y-auto h-[calc(100vh-6rem)]">
-            <div id="tableTabContent" class="h-auto min-h-full bg-gray-100">
-                
-                {{-- ALL Tables --}}
-                <div class="p-6 h-[calc(100vh-48px)]" id="all-table" role="tabpanel" aria-labelledby="all-table-tab">
+            
+        {{-- LEFT CONTENT --}}
+        {{-- LEFT CONTENT --}}
+        <div style="height: calc(100vh - 48px)" class="p-4 {{ (Auth::user()->role == 1) ? 'lg:ml-64' : 'w-screen' }} gap-4">
+                <!-- <div class="h-full w-full xl:w-auto xl:col-span-2 bg-white shadow-lg rounded-lg border border-gray-200 overflow-hidden"> -->
+            <div>
+                <!-- <div class="p-2 flex items-center justify-between">
                     @csrf
-                    <div class="w-full grid grid-cols-5 gap-6">
-                        @foreach ($tables as $table)
-                            @if ($table->is_deleted != 1)
-                            <div class="{{ $table->status == 0 ? 'bg-emerald-500' : ($table->status == 2 ? 'bg-amber-400' : 'bg-red-500') }} w-full aspect-square h-auto rounded-xl">
-                        <button type="button" data-table="{{ $table->id }}" data-tablename="{{ $table->name }}" data-status="{{ $table->status }}" class="w-full h-full relative tableButton rounded-xl">
-                            <p class="absolute top-1/3 -translate-y-1/2 w-full text-center text-2xl font-bold">{{ $table->name }}</p>
-                            <img src="{{ asset('storage/images/ico/table-noBG.png') }}" alt="" class="w-4/5 absolute bottom-0 left-1/2 -translate-x-1/2">
-                        </button>
+                    <div class="relative w-3/4">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <svg aria-hidden="true" class="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                        <input type="text" id="searchTable" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-full focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5" placeholder="Search" required autocomplete="off">
                     </div>
-                            @endif
-                        @endforeach
-                    </div>
-                </div>
+                </div> -->
 
-                {{-- CATEGORY Tabs --}}
-                @foreach ($table_cat as $table_category)
-                    <div class="p-6 h-[calc(100vh-48px)] hidden" id="{{ $table_category->slug }}-table" role="tabpanel" aria-labelledby="{{ $table_category->slug }}-tab">
-                        <div class="w-full grid grid-cols-5 gap-6">
-                            @foreach ($tables as $table)
-                                @if ($table->tblcats == $table_category->id && $table->is_deleted != 1)
-                                <div class="{{ $table->status == 0 ? 'bg-emerald-500' : ($table->status == 2 ? 'bg-amber-400' : 'bg-red-500') }} w-full aspect-square h-auto rounded-xl">
-                                    <button type="button" data-table="{{ $table->id }}" data-tablename="{{ $table->name }}" data-status="{{ $table->status }}" class="w-full h-full relative tableButton rounded-xl">
-                                        <p class="absolute top-1/3 -translate-y-1/2 w-full text-center text-2xl font-bold">{{ $table->name }}</p>
-                                        <img src="{{ asset('storage/images/ico/table-noBG.png') }}" alt="" class="w-4/5 absolute bottom-0 left-1/2 -translate-x-1/2">
-                                    </button>
-                                </div>
-                                @endif
-                            @endforeach
+                <section class="p-4 border-b border-neutral-300">
+                    <div class="flex flex-col gap-4">
+                        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <h1 class="text-2xl font-bold text-slate-800">Account Receivables</h1>
+                                <p class="text-sm text-slate-500">Unpaid Pay Later transactions by client</p>
+                            </div>
+                            <input type="search" id="searchArClient" placeholder="Search clients or transactions"
+                                class="w-full rounded-lg border border-slate-300 px-4 py-2 text-sm md:max-w-sm">
+                        </div>
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+                                <p class="text-sm font-semibold text-emerald-800">PAID TOTAL</p>
+                                <p class="mt-1 text-2xl font-bold text-emerald-900">₱ {{ number_format($arPaidTotal, 2) }}</p>
+                            </div>
+                            <div class="rounded-lg border border-red-200 bg-red-50 p-4">
+                                <p class="text-sm font-semibold text-red-800">UNPAID TOTAL</p>
+                                <p class="mt-1 text-2xl font-bold text-red-900">₱ {{ number_format($arUnpaidTotal, 2) }}</p>
+                            </div>
                         </div>
                     </div>
-                @endforeach
+                </section>
 
-                
+                <div id="arClientList" class="h-[calc(100vh-260px)] space-y-3 overflow-y-auto bg-slate-50 p-4">
+                    @forelse ($arClients as $client)
+                        <details class="ar-client-card rounded-xl border border-red-200 bg-white shadow-sm" data-search="{{ strtolower($client->name) }}">
+                            <summary class="cursor-pointer list-none rounded-xl bg-red-50 p-4 text-red-900">
+                                <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                    <div>
+                                        <h2 class="text-lg font-bold">{{ $client->name }}</h2>
+                                        <p class="text-sm text-red-700">{{ $client->transaction_count }} unpaid transaction(s)</p>
+                                    </div>
+                                    <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm font-semibold">
+                                        <span>Unpaid: ₱ {{ number_format($client->unpaid_total, 2) }}</span>
+                                        <span>Available credit: ₱ {{ number_format($client->credit_limit, 2) }}</span>
+                                    </div>
+                                </div>
+                            </summary>
+                            <div class="space-y-3 p-3">
+                                @foreach ($client->transactions as $transaction)
+                                    <details class="ar-transaction rounded-lg border border-slate-200 bg-white"
+                                        data-search="{{ strtolower($transaction->number . ' ' . $transaction->payor_name) }}">
+                                        <summary class="cursor-pointer list-none bg-slate-100 p-3">
+                                            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                                <div>
+                                                    <span class="font-bold text-slate-800">Transaction {{ $transaction->number }}</span>
+                                                    <span class="ml-2 text-sm text-slate-500">{{ \Carbon\Carbon::parse($transaction->created_at)->format('M d, Y h:i A') }}</span>
+                                                    <p class="mt-1 text-sm text-slate-500">Payor: {{ $transaction->payor_name }}</p>
+                                                </div>
+                                                <div class="flex flex-wrap gap-x-5 text-sm font-semibold">
+                                                    <span>Paid: ₱ {{ number_format($transaction->paid_amount, 2) }}</span>
+                                                    <span class="text-red-700">Balance: ₱ {{ number_format($transaction->balance_due, 2) }}</span>
+                                                </div>
+                                            </div>
+                                        </summary>
+                                        <div class="space-y-4 p-3">
+                                            <div>
+                                                <h3 class="mb-2 font-semibold text-slate-700">Items</h3>
+                                                <div class="divide-y divide-slate-100 rounded-lg border border-slate-200">
+                                                    @forelse ($transaction->items as $item)
+                                                        <div class="flex flex-wrap items-center justify-between gap-2 p-3 text-sm">
+                                                            <label class="flex items-center gap-2">
+                                                                <input type="checkbox" class="ar-void-item" data-tran-id="{{ $transaction->id }}"
+                                                                    data-slug="{{ $item->slug }}">
+                                                                <span class="font-medium">{{ $item->menu_name ?? 'Unavailable item' }}</span>
+                                                                <span class="text-slate-500">× {{ $item->quantity }}</span>
+                                                            </label>
+                                                            <span class="font-semibold">₱ {{ number_format($item->amount, 2) }}</span>
+                                                        </div>
+                                                    @empty
+                                                        <p class="p-3 text-sm text-slate-500">No items found for this transaction.</p>
+                                                    @endforelse
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <h3 class="mb-2 font-semibold text-slate-700">Payment history</h3>
+                                                <div class="divide-y divide-slate-100 rounded-lg border border-slate-200">
+                                                    @forelse ($transaction->payments as $payment)
+                                                        <div class="flex flex-wrap justify-between gap-2 p-3 text-sm">
+                                                            <span>{{ $payment->label }} · {{ $payment->payment_date ?: $payment->created_at }}</span>
+                                                            <span class="font-semibold">₱ {{ number_format($payment->amount, 2) }}</span>
+                                                        </div>
+                                                    @empty
+                                                        <p class="p-3 text-sm text-slate-500">No payments recorded.</p>
+                                                    @endforelse
+                                                </div>
+                                            </div>
+
+                                            @if (Auth::user()->role != 7)
+                                                <div class="flex flex-wrap gap-2 border-t border-slate-200 pt-3">
+                                                    <button type="button" class="arPayButton rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-700"
+                                                        data-transaction-id="{{ $transaction->id }}" data-balance="{{ $transaction->balance_due }}">
+                                                        Record payment
+                                                    </button>
+                                                    <button type="button" class="arVoidSelected rounded-lg bg-amber-600 px-4 py-2 font-semibold text-white hover:bg-amber-700"
+                                                        data-transaction-id="{{ $transaction->id }}" data-slug="{{ $transaction->slug }}">
+                                                        Void selected items
+                                                    </button>
+                                                    <button type="button" class="arVoidTransaction rounded-lg bg-red-700 px-4 py-2 font-semibold text-white hover:bg-red-800"
+                                                        data-slug="{{ $transaction->slug }}">
+                                                        Void transaction
+                                                    </button>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    </details>
+                                @endforeach
+                            </div>
+                        </details>
+                    @empty
+                        <div class="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500">
+                            No unpaid Pay Later transactions.
+                        </div>
+                    @endforelse
+                </div>
             </div>
         </div>
 
-
-
         <input type="hidden" id="mop" name="mop">
-
-        {{-- LEFT CONTENT --}} 
+                {{-- LEFT CONTENT --}} 
 <!-- leo end 4/12/25 -->
-<!-- 
-    <div class="p-6   lg:ml-64 ">
+
+    <!-- <div class="p-6 h-[calc(100vh-48px)] w-screen">
         @csrf
-        <div class="w-full grid grid-cols-5 gap-6 ">
+        <div class="w-full grid grid-cols-2 gap-2 xs:grid-cols-2 gap-2 sm:grid-cols-2 gap-2 md:grid-cols-3 gap-3 lg:grid-cols-5 gap-6 xl:grid-cols-5 gap-6 2xl:grid-cols-5 gap-6 ">
             @foreach ($tables as $table)
                 <div class="{{ ($table->status == 0) ? 'bg-emerald-500' : 'bg-red-500'; }} w-full aspect-square h-auto rounded-xl">
                     <button type="button" data-table="{{ $table->id }}" data-tablename="{{ $table->name }}" data-status="{{ $table->status }}" class="w-full h-full relative tableButton rounded-xl">
@@ -1657,20 +1792,22 @@
     <input type="hidden" id="notAuditVal" value=" {{ $nonAudited }} ">
     <script>
         $(document).ready(function() {
+            var user_role = {{ auth()->user()->role}};
+            //alert(user_role)
             var slug;
             var table;
             var id;
+            var arTransactionId = null;
+            var arBalanceDue = 0;
             var _token = $('input[name="_token"]').val();
             $('#serveAmount').text($('#auditVal').val());
             $('#notServeAmount').text($('#notAuditVal').val());
-
-
             $('.tableButton').click(function(){
                 id = $(this).data('table');
                 var name = $(this).data('tablename');
                 var status = $(this).data('status');
                 
-                //alert(id)
+
                 if(status != 0){
                     $.ajax({
                         url:"{{ route('orders.getMenu') }}",
@@ -1687,8 +1824,13 @@
                                 $('#paidDiv').html('');
                             $('#printDiv').html(``);
                             }else{
-                                $('#paidDiv').html('<button id="paidButton" class="flex items-center px-4 py-2 rounded-lg bg-emerald-400"><span class="font-semibold">Mark as PAID</span></button>');
-                                $('#printDiv').html(`<a href="{{ url('/orders/print/${id}') }}" target="_blank" class="flex items-center border border-gray-400 px-4 py-1 rounded-lg"><i class="uil uil-print text-xl mr-1"></i><span class="font-semibold">Print Bill</span></a>`);
+                                if (user_role != 7){
+                                    $('#paidDiv').html('<button id="paidButton" class="flex items-center px-4 py-2 rounded-lg bg-emerald-400"><span class="font-semibold">Mark as PAID</span></button>');
+                                    $('#printDiv').html(`<a href="{{ url('/orders/print/${id}') }}" target="_blank" class="flex items-center border border-gray-400 px-4 py-1 rounded-lg"><i class    ="uil uil-print text-xl mr-1"></i><span class="font-semibold">Print Bill</span></a>`);
+                                } else {
+                                    $('#printDiv').html(`<a href="{{ url('/orders/print-server/${id}') }}" target="_blank" class="flex items-center border border-gray-400 px-4 py-1 rounded-lg"><i class="uil uil-print text-xl mr-1"></i><span class="font-semibold">Print Bill Server</span></a>`);
+                                }
+                                
                             }
 
                             if(result.co == '1'){
@@ -1726,8 +1868,8 @@
 
             jQuery(document).on("click", "#acceptReduceButton", function(){
 
-                voidCode = $('#voidCodeReduce').val();
-
+                // voidCode = $('#voidCodeReduce').val();
+                // voidCode : voidCode,
                 $('#loadingScreen').removeClass('hidden');
                 $.ajax({
                     url:"{{ route('orders.reduce') }}",
@@ -1736,11 +1878,10 @@
                     data:{
                         slug: slug,
                         table: table,
-                        voidCode : voidCode,
                         _token: _token
                     },
                     success:function(result){
-                        if (result.msg == 'success') {
+                        // if (result.msg == 'success') {
                             $('#allOrders').html(result.allOrders);
                             console.log(result.co);
                             if(result.co == '1'){
@@ -1761,10 +1902,10 @@
                             $('#orderedOwnerDisc').html(result.limeDiscountVal);
                             $('#orderedSc').html(result.ServiceCharge);
                             $('#orderedTotal').html(result.total);
-                        } else{
+                        /* } else{
                             $('#loadingScreen').addClass('hidden');
                             $('#errorVoidCodeReduce').html('Security Code is incorrect! Please ask the administrator.');
-                        }
+                        } */
                     }
                 })
             });
@@ -1894,6 +2035,7 @@
 
 
             jQuery(document).on("click", "#paidButton", function(){
+                arTransactionId = null;
                 $.ajax({
                         url:"{{ route('orders.getAmount') }}",
                         method:"POST",
@@ -1931,6 +2073,18 @@
                         }
                 })
                 
+            });
+
+            jQuery(document).on("click", ".arPayButton", function(){
+                arTransactionId = $(this).data('transaction-id');
+                arBalanceDue = parseFloat($(this).data('balance')) || 0;
+                $('#actualAmount').html(arBalanceDue.toFixed(2));
+                $('#actualAmount2').html(arBalanceDue.toFixed(2));
+                $('#payNowButton').data('amount', arBalanceDue);
+                $('#cashMop, #ccMop, #visaMop, #gcashMop, #wcpMop, #amexMop, #bdoMop, #bancnetMop, #dinersMop, #dpMop, #giftMop, #jcbMop, #mayaMop, #grabPayMop, #unionMop, #grabMop, #pandaMop, #qrphMop').val('');
+                $('#totalPayment').text('0');
+                $('#amountError').addClass('hidden');
+                $('#openMOPModal').click();
             });
             jQuery(document).on("click", "#deleteDiscountButton", function(){
                 $('#openRemoveDiscountModal').click();
@@ -1986,11 +2140,11 @@
                         $('#orderedTotal').html(result.total);
                         $('#limeDiscountSpan').html(result.limeDiscountPercent);
                         $('#scSpan').html(result.scPercent);
-                        //alert(result)
+                        //$('#orderedTotal').html(result.total);alert(result)
                         // $('#actualAmount').html(result);
                         // $('#payNowButton').data('amount', result);
                         // $('#loadingScreen').addClass('hidden');
-                        //window.location.reload()
+                        window.location.reload()
                     }
                 })
                 //alert($('#tableIDforDiscount').val());
@@ -2027,15 +2181,33 @@
             });
             
 
-            
+            /* $('.mopButton').click(function(){
+                var mop = $(this).data('mop');
+                $('#mop').val(mop);
+                $('#loadingScreen').removeClass('hidden');
+                $.ajax({
+                    url:"{{ route('orders.getAmount') }}",
+                    method:"POST",
+                    data:{
+                        id: id,
+                        _token: _token
+                    },
+                    success:function(result){
+                        $('#actualAmount').html(result);
+                        $('#payNowButton').data('amount', result);
+                        $('#loadingScreen').addClass('hidden');
+                    }
+                })
+            }); */
 
-            jQuery(document).on("click", "#payNowButton", function(){
-                
+            $('#payNowButton').click(function(){
                 var amount = parseFloat($(this).data('amount'));
                 var amountInput = $('#totalPayment').text();
+                //alert( amount + ' s '+ amountInput)
                 var namountInput = parseFloat(amountInput);
                 var mop = $('#mop').val();
-                //alert(namountInput + ' yest ' + amount);
+                var payingArTransaction = arTransactionId;
+
                 var cashMop = ( $('#cashMop').val() == '' ) ? 0 : parseFloat( $('#cashMop').val() );
                 var ccMop = ( $('#ccMop').val() == '' ) ? 0 : parseFloat( $('#ccMop').val() );
                 var visaMop = ( $('#visaMop').val() == '' ) ? 0 : parseFloat( $('#visaMop').val() );
@@ -2056,17 +2228,30 @@
                 var qrphMop = ( $('#qrphMop').val() == '' ) ? 0 : parseFloat( $('#qrphMop').val() );
 
 
-                if(namountInput >= amount){
+                if (payingArTransaction) {
+                    if (namountInput <= 0 || namountInput > arBalanceDue) {
+                        $('#amountError').removeClass('hidden');
+                        return;
+                    }
+                } else if(namountInput < amount){
+                    $('#amountError').removeClass('hidden');
+                    return;
+                }
+
+                if (payingArTransaction || namountInput >= amount) {
                     $('#loadingScreen').removeClass('hidden');
-                    var change = amountInput - amount;
-                    $('#payNowCancelButton').click();
-                    $('#changeP').html(change);
+                    if (!payingArTransaction) {
+                        var change = amountInput - amount;
+                        $('#payNowCancelButton').click();
+                        $('#changeP').html(change);
+                    }
 
                     $.ajax({
                         url:"{{ route('orders.paid') }}",
                         method:"POST",
                         data:{
                             id: id,
+                            ar_transaction_id: payingArTransaction,
                             amountInput: amountInput,
                             mop: mop,
                             cashMop : cashMop,
@@ -2090,15 +2275,30 @@
                             _token: _token
                         },
                         success:function(result){
+                            if (payingArTransaction) {
+                                $('#loadingScreen').addClass('hidden');
+                                if (result.msg === 'success') {
+                                    location.reload();
+                                } else {
+                                    alert(result.error || 'Unable to record the AR payment.');
+                                }
+                                return;
+                            }
                             $('#openChangeModal').click();
                             $('#loadingScreen').addClass('hidden');
+                        },
+                        error:function(xhr){
+                            $('#loadingScreen').addClass('hidden');
+                            var message = xhr.responseJSON && xhr.responseJSON.error
+                                ? xhr.responseJSON.error
+                                : 'Unable to record the payment.';
+                            alert(message);
                         }
                     })
-                }else{
+                } else {
                     $('#amountError').removeClass('hidden');
                 }
             });
-            
 
             /* $('.numpad-button').on('click', function() {
                 const $amount = $('#amount');
@@ -2172,31 +2372,15 @@
                     },
                     success:function(result){
                         $('#allOrders').html(result.allOrders);
+                         /* $('#orderedSubtotal').html(result.subTotal);
+                        $('#orderedPwd').html(result.discount);
+                        $('#orderedOwnerDisc').html(result.limeDiscountVal);
+                        $('#orderedSc').html(result.ServiceCharge); */
                         // $('#orderedTotal').html(''); 
                         // $('#orderedSubtotal').html(''); 
-                        // $('#orderedSubtotal').html(result.subtotal); 
                         // $('#orderedTotal').html(result.total); 
-                        /* $('#ordersCount').html(result.ordersCount);
-                        //$('#ordersCount').html(result.orders.length);
-                        $('#ordersDiv').html(result.orders);
-                        $('#subTotal').html(result.subTotal);
-                        $('#discountTotal').html(result.discount);
-                        $('#total').html(result.total);
-                        $('#sc_val').val(result.ServiceCharge);
-                        $('#sctotal').html(result.ServiceCharge);
-                        $('#actualAmount').html(result.amount);
-                        $('#actualAmount2').html(result.amount);
-                        $('#payNowButton').data('amount', result.amount);
-                        $('#limepercent').html(result.limeDiscountPercent);
-                        $('#limediscountTotal').html(result.limeDiscountVal);
-
-                        $('#LessVatDeduction').val(result.LessVatDeduction); 
-                        $('#VatExemptSales').val(result.VatExemptSales); 
-                        $('#vatsales').val(result.vatsales); 
-                        $('#vat').val(result.vat); 
+                        // $('#orderedSubtotal').html(result.subtotal); 
                         
-                        $('#limediscountTotalValue').html(result.limediscount);
-                         $('#discountTotalValue').html(result.discount); */
                     }
                 })
             });
@@ -2218,6 +2402,26 @@
                     }
                 })
             });
+
+            jQuery(document).on("click", ".odiscSelect", function(){
+                var slug = $(this).data('slug');
+                var _token = $('input[name="_token"]').val();
+                var checkbox = $('#odiscSelect'+slug).is(":checked")
+                $.ajax({
+                    url:"{{ route('orders.ownerdiscSelected') }}",
+                    method:"POST",
+                    dataType: 'json',
+                    data:{
+                        slug: slug,
+                        _token: _token,
+                        checkbox: checkbox
+                    },
+                    success:function(result){
+                    }
+                })
+            });
+
+
             jQuery(document).on("click", ".addPwdButton", function(){
                 $('#openAddPwdModal').click();
                 var slug = $(this).data('slug');
@@ -2281,7 +2485,7 @@
 
             jQuery(document).on("click", ".btnTransfer", function(){
                 
-                
+                $('#openTransferTableModal').click();
                 
                 //$('.tableIDforDiscount').val(id);
                 $.ajax({
@@ -2294,7 +2498,6 @@
                         },
                         success:function(result){
                             $('#transferTableDiv').html(result.tables);
-                            $('#openTransferTableModal').click();
                             //$('#OrderDiscount').html(result.disc);
                             
                             
@@ -2358,12 +2561,21 @@
                 
             });
 
+            $('#showPasswordMultiple').click(function(){
+                if ($("#voidCodeMultiple").prop("type") == 'text'){
+                    $("#voidCodeMultiple").prop("type", "password");
+                } else {
+                    $("#voidCodeMultiple").prop("type", "text");
+                }
+                
+            });
+
 
             jQuery(document).on("click", "#acceptArButton", function(){
 
                 var arCode = $('#arCode').val();
                 var customer_name_ar = $('#customer_name_ar').val();
-
+                
                 $.ajax({
                     url:"{{ route('orders.moveToAr') }}",
                     method:"POST",
@@ -2390,29 +2602,61 @@
             });
 
 
-            $('#showPasswordMultiple').click(function(){
-                if ($("#voidCodeMultiple").prop("type") == 'text'){
-                    $("#voidCodeMultiple").prop("type", "password");
-                } else {
-                    $("#voidCodeMultiple").prop("type", "text");
-                }
-                
-            });
+            
 
             jQuery(document).on("click", ".btnMultipleVoid", function(){
                 
                 var slug = $(this).data('slug');
                 
-                $('#acceptMultipleVoidButton').data('slug', slug);
+                $('#acceptMultipleVoidButton').data('slug', slug).data('void-transaction', false);
                 $('#openMultipleVoidModal').click();
                 //$('.tableIDforDiscount').val(id);
                 
             });
 
+            jQuery(document).on("click", ".arVoidSelected", function(){
+                var transactionId = $(this).data('transaction-id');
+                var transactionSlug = $(this).data('slug');
+                var itemInputs = $('.ar-void-item[data-tran-id="' + transactionId + '"]');
+                var selectedCount = itemInputs.filter(':checked').length;
+
+                if (selectedCount === 0) {
+                    alert('Select at least one item to void.');
+                    return;
+                }
+
+                var requests = [];
+                itemInputs.each(function(){
+                    requests.push($.ajax({
+                        url: "{{ route('orders.multivoidcheck') }}",
+                        method: "POST",
+                        data: {
+                            slug: $(this).data('slug'),
+                            checkbox: $(this).is(':checked'),
+                            _token: _token
+                        }
+                    }));
+                });
+
+                $.when.apply($, requests).done(function(){
+                    $('#acceptMultipleVoidButton').data('slug', transactionSlug).data('void-transaction', false);
+                    $('#openMultipleVoidModal').click();
+                }).fail(function(){
+                    alert('Unable to prepare the selected items for voiding.');
+                });
+            });
+
+            jQuery(document).on("click", ".arVoidTransaction", function(){
+                $('#acceptMultipleVoidButton').data('slug', $(this).data('slug')).data('void-transaction', true);
+                $('#openMultipleVoidModal').click();
+            });
+
             jQuery(document).on("click", "#acceptMultipleVoidButton", function(){
                 var slug = $(this).data('slug');
+                var voidTransaction = $(this).data('void-transaction') === true;
                 voidCode = $('#voidCodeMultiple').val();
 
+                // 
                 //$voidCode = $request->voidCode;
                 var _token = $('input[name="_token"]').val();
                 //$('#openMultipleVoidModal').click();
@@ -2424,6 +2668,7 @@
                     data:{
                         slug: slug,
                         voidCode : voidCode,
+                        void_transaction: voidTransaction,
                         _token: _token
                     },
                     success:function(result){
@@ -2439,6 +2684,7 @@
                 })
                 
             });
+
 
             jQuery(document).on("click", ".delorderedBtn", function(){
                 var slug = $(this).data('slug');
@@ -2638,8 +2884,8 @@
 
             jQuery(document).on("click", ".btnSplit", function(){
                 
-                //$('#splitTableDiv').html('');
-                $('#splitErrorDiv').addClass('hidden');
+                $('#openSplitTableModal').click();
+                
                 //$('.tableIDforDiscount').val(id);
                 $.ajax({
                         url:"{{ route('orders.splitTable') }}",
@@ -2651,7 +2897,6 @@
                         },
                         success:function(result){
                             $('#splitTableDiv').html(result.tables);
-                            $('#openSplitTableModal').click();
                             //$('#OrderDiscount').html(result.disc);
                             
                             
@@ -2659,33 +2904,71 @@
                     })
             });
 
+            jQuery(document).on("click", ".btnDp", function(){
+                var slug = $(this).data('slug');
+                $('#acceptDpButton').data('slug', slug);
+                $('#openDpModal').click();
+                
+            });
+
+            jQuery(document).on( "keyup", "#dpAmount", function(){
+                var val = $(this).val().replace(/[^0-9.]/g, '');
+                $(this).val(val);
+                
+            });
+
+            jQuery(document).on("click", "#acceptDpButton", function(){
+                var slug = $(this).data('slug');
+                var dpAmount = $('#dpAmount').val();
+                var mop_val = $('#mop_val').val();
+                var branch = $('#branch').val();
+
+                if (mop_val == '' || dpAmount == ''){
+                    $('#dpErrorDiv').removeClass('hidden')
+                } else {
+                    $('#loadingScreen').removeClass('hidden');
+                    $.ajax({
+                        url:"{{ route('orders.dp') }}",
+                        method:"POST",
+                        dataType: 'json',
+                        data:{
+                            dpAmount : dpAmount,
+                            mop_val : mop_val,
+                            slug : slug,
+                            branch: branch,
+                            _token: _token
+                        },
+                        success:function(result){
+                            $('#loadingScreen').addClass('hidden');
+                            location.reload();
+                            
+                        }
+                    })
+                }
+            });
+
             jQuery(document).on("click", "#acceptSplitTableButton", function(){
                 
                 var tranID = $('#tableOptionSplit').data('id');
                 var NewTableId = $('#tableOptionSplit').val();
-                //alert(NewTableId + ' 2 ' + tranID)
+               //alert(NewTableId)
                 //$('.tableIDforDiscount').val(id);
                 $.ajax({
-                    url:"{{ route('orders.split') }}",
-                    method:"POST",
-                    dataType: 'json',
-                    data:{
-                        tranID : tranID,
-                        NewTableId : NewTableId,
-                        _token: _token
-                    },
-                    success:function(result){
-                        //$('#transferTableDiv').html(result.tables);
-                        //$('#OrderDiscount').html(result.disc);
-                        if (result.msg == 'success'){
+                        url:"{{ route('orders.split') }}",
+                        method:"POST",
+                        dataType: 'json',
+                        data:{
+                            tranID : tranID,
+                            NewTableId : NewTableId,
+                            _token: _token
+                        },
+                        success:function(result){
+                            //$('#transferTableDiv').html(result.tables);
+                            //$('#OrderDiscount').html(result.disc);
                             location.reload();
-                        } else {
-                            $('#splitErrorDiv').removeClass('hidden');
+                            
                         }
-                        
-                        
-                    }
-                })
+                    })
             });
             
             jQuery(document).on("click", ".editPaxButton", function(){
@@ -2717,44 +3000,12 @@
                 });
             });
 
-            // leo start 4/22/25
-            $('#tableTabs').on('click', '[role="tab"]', function () {
-            const targetId = $(this).data('tabs-target');
-  
-            $('#tableTabs [role="tab"]')
-                .removeClass('border-blue-500 bg-blue-100 text-blue-800')
-                .addClass('border-gray-300 text-gray-800')
-                .attr('aria-selected', 'false');
-
-            $(this)
-                .removeClass('border-gray-300 text-gray-800')
-                .addClass('border-blue-600 bg-blue-100 text-blue-800')
-                .attr('aria-selected', 'true');
-
-            $('#tableTabContent > div').addClass('hidden');
-            $(targetId).removeClass('hidden');
-            });     
-
-            $('#searchTable').on('keyup', function () {
-                const value = $(this).val().toLowerCase();
-                $('#all-table-tab').click();
-                $("#all-table .table, #all-table .tableButton").each(function () {
-                    $(this).toggle($(this).text().toLowerCase().includes(value));
+            $('#searchArClient').on('input', function(){
+                var search = $(this).val().toLowerCase();
+                $('.ar-client-card').each(function(){
+                    $(this).toggle($(this).text().toLowerCase().includes(search));
                 });
             });
-            // leo end 4/22/25
-
-            //leo start 4-22-25
-            $('.scroll-left.table').click(function() {
-                var divW = ($('#tableTabs').width() * 2) / 3;
-                $('#tableTabs').animate({scrollLeft: '-=' + divW + 'px'}, 'slow');
-            });
-
-            $('.scroll-right.table').click(function() {
-                var divW = ($('#tableTabs').width() * 2) / 3;
-                $('#tableTabs').animate({scrollLeft: '+=' + divW + 'px'}, 'slow');
-            });
-            //leo end 4-22-25
 
         });
     </script>

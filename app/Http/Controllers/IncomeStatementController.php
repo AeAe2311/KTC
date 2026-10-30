@@ -209,38 +209,38 @@ class IncomeStatementController extends Controller
         // REVOLVING BUDGET
         // ============================================
         $revolvingRows = collect([]);
+        // LINE START 212: Disable Revolving Transactions by ken 10-29-26
+        // if (Schema::hasTable('revolving_transactions')) {
+        //     $revolvingQuery = DB::table('revolving_transactions as rt')
+        //         ->leftJoin('expenses_categories as ec', 'rt.category_id', '=', 'ec.id')
+        //         ->select(
+        //             DB::raw('DATE_FORMAT(rt.created_at, "%Y-%m") as month'),
+        //             DB::raw('SUM(rt.amount) as amount'),
+        //             DB::raw('COALESCE(ec.name, "Uncategorized Expenses") as category'),
+        //             DB::raw('COALESCE(rt.particulars, "Revolving Budget") as item')
+        //         )
+        //         ->where('rt.created_at', '>=', $startDate)
+        //         ->where('rt.created_at', '<', $endDate)
+        //         ->where('rt.is_deleted', 0)
+        //         ->whereNotNull('rt.category_id')
+        //         ->groupBy(
+        //             DB::raw('DATE_FORMAT(rt.created_at, "%Y-%m")'),
+        //             'rt.category_id',
+        //             'ec.name',
+        //             'rt.particulars'
+        //         )
+        //         ->orderBy('ec.name')
+        //         ->orderBy('rt.particulars');
 
-        if (Schema::hasTable('revolving_transactions')) {
-            $revolvingQuery = DB::table('revolving_transactions as rt')
-                ->leftJoin('expenses_categories as ec', 'rt.category_id', '=', 'ec.id')
-                ->select(
-                    DB::raw('DATE_FORMAT(rt.created_at, "%Y-%m") as month'),
-                    DB::raw('SUM(rt.amount) as amount'),
-                    DB::raw('COALESCE(ec.name, "Uncategorized Expenses") as category'),
-                    DB::raw('COALESCE(rt.particulars, "Revolving Budget") as item')
-                )
-                ->where('rt.created_at', '>=', $startDate)
-                ->where('rt.created_at', '<', $endDate)
-                ->where('rt.is_deleted', 0)
-                ->whereNotNull('rt.category_id')
-                ->groupBy(
-                    DB::raw('DATE_FORMAT(rt.created_at, "%Y-%m")'),
-                    'rt.category_id',
-                    'ec.name',
-                    'rt.particulars'
-                )
-                ->orderBy('ec.name')
-                ->orderBy('rt.particulars');
+        //     if ($userBranch && Schema::hasColumn('revolving_transactions', 'store_code')) {
+        //         $revolvingQuery->where('rt.store_code', $userBranch);
+        //     } elseif (!empty($branchCodes) && Schema::hasColumn('revolving_transactions', 'store_code')) {
+        //         $revolvingQuery->whereIn('rt.store_code', $branchCodes);
+        //     }
 
-            if ($userBranch && Schema::hasColumn('revolving_transactions', 'store_code')) {
-                $revolvingQuery->where('rt.store_code', $userBranch);
-            } elseif (!empty($branchCodes) && Schema::hasColumn('revolving_transactions', 'store_code')) {
-                $revolvingQuery->whereIn('rt.store_code', $branchCodes);
-            }
-
-            $revolvingRows = $revolvingQuery->get();
-        }
-
+        //     $revolvingRows = $revolvingQuery->get();
+        // }
+        // LINE END 243: Disable Revolving Transactions by ken 10-29-26
         // ============================================
         // COGS FROM ORDERED + MENUS (food cost)
         // (unchanged — this feeds the statement's food-cost COGS aggregation)
@@ -426,7 +426,10 @@ class IncomeStatementController extends Controller
             // Added to COGS between Beginning and Ending Inventory.
             // 20260528001 JET START LINES 406 - 439
             // ============================================
-            $is_field = DB::table('income_statement')->where('id', 2)->first();
+            $is_field = DB::table('income_statement')->where('id', 2) // LINE 429: START of UPDATE by ken 10-30-2026
+                ->where('created_at', '>=', $startDate)
+                ->where('created_at', '<', $endDate)
+                ->first(); // LINE END 432: END OF UPDATE BY KEN 10-30-2026
 
             foreach ($months as $monthKey => $label) {
                 if ($is_field && !empty($is_field->beginning)) {
@@ -577,55 +580,55 @@ class IncomeStatementController extends Controller
                     $expenseCategoryData[$categoryPos]['items'][$itemPos]['txn_count_by_month'][$monthKey] += $txnCount;
                 }
             }
+            // LINE START 580: Disable Revolving Transactions by ken 10-29-26
+            // foreach ($revolvingRows as $row) {
+            //     $categoryLabel = trim($row->category) ?: 'Uncategorized';
+            //     $itemLabel     = trim($row->item) ?: 'Revolving Budget';
+            //     $monthKey      = $row->month;
+            //     $amount        = (float) $row->amount;
 
-            foreach ($revolvingRows as $row) {
-                $categoryLabel = trim($row->category) ?: 'Uncategorized';
-                $itemLabel     = trim($row->item) ?: 'Revolving Budget';
-                $monthKey      = $row->month;
-                $amount        = (float) $row->amount;
+            //     $totalOperatingExpenses += $amount;
+            //     $revolvingBudgetTotal   += $amount;
 
-                $totalOperatingExpenses += $amount;
-                $revolvingBudgetTotal   += $amount;
+            //     if (!isset($categoryIndex[$categoryLabel])) {
+            //         $categoryIndex[$categoryLabel] = count($expenseCategoryData);
+            //         $itemIndex[$categoryLabel]     = [];
+            //         $expenseCategoryData[] = [
+            //             'category'       => $categoryLabel,
+            //             'total'          => 0,
+            //             'total_by_month' => array_fill_keys(array_keys($months), 0),
+            //             'items'          => [],
+            //         ];
+            //     }
 
-                if (!isset($categoryIndex[$categoryLabel])) {
-                    $categoryIndex[$categoryLabel] = count($expenseCategoryData);
-                    $itemIndex[$categoryLabel]     = [];
-                    $expenseCategoryData[] = [
-                        'category'       => $categoryLabel,
-                        'total'          => 0,
-                        'total_by_month' => array_fill_keys(array_keys($months), 0),
-                        'items'          => [],
-                    ];
-                }
+            //     $categoryPos = $categoryIndex[$categoryLabel];
+            //     $expenseCategoryData[$categoryPos]['total'] += $amount;
+            //     if (isset($expenseCategoryData[$categoryPos]['total_by_month'][$monthKey])) {
+            //         $expenseCategoryData[$categoryPos]['total_by_month'][$monthKey] += $amount;
+            //     }
 
-                $categoryPos = $categoryIndex[$categoryLabel];
-                $expenseCategoryData[$categoryPos]['total'] += $amount;
-                if (isset($expenseCategoryData[$categoryPos]['total_by_month'][$monthKey])) {
-                    $expenseCategoryData[$categoryPos]['total_by_month'][$monthKey] += $amount;
-                }
+            //     if (!isset($itemIndex[$categoryLabel][$itemLabel])) {
+            //         $itemIndex[$categoryLabel][$itemLabel] = count($expenseCategoryData[$categoryPos]['items']);
+            //         $expenseCategoryData[$categoryPos]['items'][] = [
+            //             'item'            => $itemLabel,
+            //             'raw_item'        => $itemLabel,
+            //             'total'           => 0,
+            //             'amount_by_month' => array_fill_keys(array_keys($months), 0),
+            //             'txn_count'       => 0,
+            //             'txn_count_by_month' => array_fill_keys(array_keys($months), 0),
+            //             'percent'         => 0,
+            //             'first_txn'       => null,
+            //             'last_txn'        => null,
+            //         ];
+            //     }
 
-                if (!isset($itemIndex[$categoryLabel][$itemLabel])) {
-                    $itemIndex[$categoryLabel][$itemLabel] = count($expenseCategoryData[$categoryPos]['items']);
-                    $expenseCategoryData[$categoryPos]['items'][] = [
-                        'item'            => $itemLabel,
-                        'raw_item'        => $itemLabel,
-                        'total'           => 0,
-                        'amount_by_month' => array_fill_keys(array_keys($months), 0),
-                        'txn_count'       => 0,
-                        'txn_count_by_month' => array_fill_keys(array_keys($months), 0),
-                        'percent'         => 0,
-                        'first_txn'       => null,
-                        'last_txn'        => null,
-                    ];
-                }
-
-                $itemPos = $itemIndex[$categoryLabel][$itemLabel];
-                $expenseCategoryData[$categoryPos]['items'][$itemPos]['total'] += $amount;
-                if (isset($expenseCategoryData[$categoryPos]['items'][$itemPos]['amount_by_month'][$monthKey])) {
-                    $expenseCategoryData[$categoryPos]['items'][$itemPos]['amount_by_month'][$monthKey] += $amount;
-                }
-            }
-
+            //     $itemPos = $itemIndex[$categoryLabel][$itemLabel];
+            //     $expenseCategoryData[$categoryPos]['items'][$itemPos]['total'] += $amount;
+            //     if (isset($expenseCategoryData[$categoryPos]['items'][$itemPos]['amount_by_month'][$monthKey])) {
+            //         $expenseCategoryData[$categoryPos]['items'][$itemPos]['amount_by_month'][$monthKey] += $amount;
+            //     }
+            // }
+            // LINE END 628: Disable Revolving Transactions by ken 10-29-26
             usort($expenseCategoryData, function ($a, $b) {
                 return strcasecmp($a['category'], $b['category']);
             });

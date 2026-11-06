@@ -1,0 +1,40 @@
+Kumpadres 
+
+1. AddStockController
+comment ung dalawang row na nasa ibabaw nito
+Line 104 comment -> //25006001 start added angge 11/6/2026 for input wrs
+Line 107 comment -> //25006001 end added angge 11/6/2026 for input wrs
+comment ung dalawang row na nasa ibabaw nito
+Line 144 comment ->  //25006001 start added angge 11/6/2026 for input wrs 
+Line 147 comment -> //25006001 end added angge 11/6/2026 for input wrs         
+
+2. add-stock.blade.php
+Line 220 comment ->  <!--2506001 start added angge input wrs -->
+Line 280 comment ->  <!--2506001 end added angge input wrs -->
+comment yung label for="modalSellPrice"
+comment ito 
+function updateSellingPriceTypeOptionLabels() {
+
+
+ilagay ito 
+Line 587 comment ->  //2506001 start added js update selling ange 11/6/2026
+Line 672 comment -> //2506001 start added js update selling ange 11/6/2026
+Line 986 comment ->    //2506001 start added ange 11/6/2026
+Line 992 comment ->   //2506001 end added ange 11/6/2026
+
+
+Line 1024 comment -> //2506001 start added ange 11/6/2026
+Line 1044 comment -> //2506001 end added ange 11/6/2026
+
+
+Line 1090 comment ->    //2506001 start added angge 11/6/2026
+Line 1096 comment ->   //2506001 end added angge 11/6/2026
+
+
+Line 1261 comment -> //2506001 start added ange 11/6/2026
+Line 1283 comment ->  //2506001 end added ange 11/6/2026
+
+3. 
+
+
+
